@@ -555,7 +555,7 @@ SOFTWARE.
 
 ## 👤 Author
 
-**Bhagyaabbigeri**
+**Bhagyashree Reddy**
 
 - GitHub: [@Bhagyaabbigeri](https://github.com/Bhagyaabbigeri)
 - Project: [SpaceRisk-Radar](https://github.com/Bhagyaabbigeri/SpaceRisk-Radar)
