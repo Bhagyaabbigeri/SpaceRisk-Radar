@@ -1,0 +1,64 @@
+# ──────────────────────────────────────────────────────────
+# SpaceRisk Radar – .gitignore
+# ──────────────────────────────────────────────────────────
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+.venv-1/
+venv/
+env/
+ENV/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Aider (AI assistant)
+.aider*
+
+# Logs
+*.log
+*.err.log
+*.job.log
+
+# Database files (generated at runtime)
+backend/app_data.db
+backend/app_data.db-journal
+backend/app_data_probe.db
+backend/app_data_probe.db-journal
+*.db
+*.db-journal
+
+# Cache files (generated at runtime)
+backend/tle_cache.txt
+backend/launch_cache.json
+
+# Temp / probe directories
+.pycache_check/
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Node (if ever added)
+node_modules/
+
+# OS files
+.DS_Store
+Desktop.ini

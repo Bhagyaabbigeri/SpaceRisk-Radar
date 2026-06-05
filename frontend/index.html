@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collision Risk Visualizer | Orbital Telemetry Control</title>
+    
+    <!-- Futuristic Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Vanilla CSS Stylesheet -->
+    <style>
+        :root {
+            --bg-base: #030712;
+            --panel-bg: rgba(6, 11, 25, 0.65);
+            --panel-border: rgba(0, 240, 255, 0.15);
+            --accent-cyan: #00f0ff;
+            --accent-blue: #0072ff;
+            --accent-red: #ff3b30;
+            --accent-yellow: #ffcc00;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --glass-blur: blur(12px);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 16px;
+            font-weight: 500;
+            overflow-x: hidden;
+            overflow-y: auto;
+            min-height: 100vh;
+            user-select: none;
+        }
+
+        h1, h2, h3, .hud-title {
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 1px;
+            color: var(--text-main);
+        }
+
+        /* Glassmorphism Panels */
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--panel-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .glass-panel:hover {
+            border-color: rgba(0, 240, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(0, 240, 255, 0.05);
+        }
+
+        /* HUD Structure */
+        #hud-container {
+            position: relative;
+            width: 100%;
+            min-height: 100vh;
+            z-index: 10;
+            pointer-events: none;
+            display: grid;
+            grid-template-columns: 320px 1fr 340px;
+            grid-template-rows: 70px 1fr 240px;
+            grid-template-areas: 
+                "header header header"
+                "left space right"
+                "bottom bottom bottom";
+            padding: 15px;
+            gap: 15px;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Header HUD */
+        header {
+            grid-area: header;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            pointer-events: auto;
+            border-bottom: 2px solid rgba(0, 240, 255, 0.25);
+            position: relative;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            color: var(--accent-cyan);
+            font-size: 28px;
+            animation: pulse-glow 2s infinite ease-in-out;
+        }
+
+        .logo-text h1 {
+            font-size: 20px;
+            font-weight: 900;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+            background: linear-gradient(135deg, #fff, var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .live-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+        }
+
+        .stat-badge {
+            background: rgba(0, 240, 255, 0.06);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            padding: 5px 12px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-badge span {
+            color: var(--accent-cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+        }
+
+        .stat-badge.alert-danger {
+            background: rgba(255, 59, 48, 0.08);
+            border-color: rgba(255, 59, 48, 0.3);
+        }
+
+        .stat-badge.alert-danger span {
+            color: var(--accent-red);
+            text-shadow: 0 0 8px rgba(255, 59, 48, 0.4);
+        }
+
+        /* Left Panel - Filters */
+        #left-hud {
+            grid-area: left;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+            padding-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .section-title ion-icon {
+            color: var(--accent-cyan);
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+/* Search results styling */
+.search-item { padding:6px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.05); }
+.search-item:hover { background:rgba(0,240,255,0.05); }
+
+        .filter-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        /* Input Controls styling */
+        input[type="text"] {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(0, 240, 255, 0.15);
+            padding: 10px 12px;
+            border-radius: 6px;
+            color: var(--text-main);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+            background: rgba(0, 240, 255, 0.05);
+            box-shadow: 0 0 8px rgba(0, 240, 255, 0.2);
+        }
+
+        select {
+            width: 100%;
+            background: #090e1f;
+            border: 1px solid rgba(0, 240, 255, 0.15);
+            padding: 10px;
+            border-radius: 6px;
+            color: var(--text-main);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 15px;
+            outline: none;
+        }
+
+        select:focus {
+            border-color: var(--accent-cyan);
+        }
+
+        /* Custom Slider styling */
+        .slider-container {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent-cyan);
+            cursor: pointer;
+            box-shadow: 0 0 8px var(--accent-cyan);
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        /* Toggle Button Group */
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .hud-btn {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+
+        .hud-btn.active, .hud-btn:hover {
+            background: rgba(0, 240, 255, 0.08);
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+            box-shadow: 0 0 6px rgba(0, 240, 255, 0.1);
+        }
+
+        /* Right Panel - Satellite Telemetry */
+        #right-hud {
+            grid-area: right;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        #telemetry-display {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            height: 100%;
+        }
+
+        .unselected-prompt {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            color: var(--text-muted);
+            gap: 12px;
+            padding: 20px;
+        }
+
+        .unselected-prompt ion-icon {
+            font-size: 48px;
+            color: rgba(0, 240, 255, 0.2);
+            animation: pulse-telemetry 3s infinite ease-in-out;
+        }
+
+        .telemetry-card {
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.01);
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .advanced-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 120px;
+            overflow-y: auto;
+            padding-right: 2px;
+        }
+
+        .advanced-item {
+            border-left: 3px solid var(--accent-cyan);
+            background: rgba(255, 255, 255, 0.025);
+            border-radius: 4px;
+            padding: 7px 8px;
+            font-size: 12px;
+            line-height: 1.25;
+        }
+
+        .advanced-item strong {
+            color: var(--text-main);
+            display: block;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px;
+            margin-bottom: 2px;
+        }
+
+        .advanced-item span {
+            color: var(--text-muted);
+        }
+
+        .auth-panel {
+            pointer-events: auto;
+            position: absolute;
+            top: 92px;
+            right: 16px;
+            z-index: 20;
+            width: 320px;
+            max-width: calc(100vw - 32px);
+            padding: 14px;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .auth-panel.open {
+            display: flex;
+        }
+
+        .auth-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .auth-panel input {
+            width: 100%;
+        }
+
+        .auth-status {
+            color: var(--text-muted);
+            font-size: 12px;
+            min-height: 16px;
+        }
+
+        .icon-action {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            flex: 0 0 auto;
+        }
+
+        .card-header {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 4px;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+        }
+
+        .data-label {
+            color: var(--text-muted);
+        }
+
+        .data-value {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+
+        .data-value.highlight {
+            color: var(--accent-cyan);
+            text-shadow: 0 0 6px rgba(0, 240, 255, 0.3);
+        }
+
+        .data-value.danger {
+            color: var(--accent-red);
+            text-shadow: 0 0 6px rgba(255, 59, 48, 0.3);
+        }
+
+        /* Favorite Button */
+        .fav-button {
+            background: rgba(255, 200, 0, 0.08);
+            border: 1px solid rgba(255, 200, 0, 0.3);
+            color: #ffc800;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-transform: uppercase;
+        }
+
+        .fav-button:hover {
+            background: rgba(255, 200, 0, 0.15);
+            border-color: #ffc800;
+            box-shadow: 0 0 8px rgba(255, 200, 0, 0.3);
+        }
+
+        .fav-button.favorited {
+            background: rgba(255, 200, 0, 0.2);
+            border-color: #ffc800;
+            box-shadow: 0 0 12px rgba(255, 200, 0, 0.4);
+        }
+
+        /* Bottom Panel - Conjunction List */
+        #bottom-hud {
+            grid-area: bottom;
+            pointer-events: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .conjunctions-container {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            height: 110px;
+            align-items: center;
+        }
+
+        /* Custom Scrollbar */
+        .conjunctions-container::-webkit-scrollbar, #right-hud::-webkit-scrollbar {
+            height: 6px;
+            width: 4px;
+        }
+
+        .conjunctions-container::-webkit-scrollbar-track, #right-hud::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .conjunctions-container::-webkit-scrollbar-thumb, #right-hud::-webkit-scrollbar-thumb {
+            background: rgba(0, 240, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        .conjunctions-container::-webkit-scrollbar-thumb:hover, #right-hud::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-cyan);
+        }
+
+        .conjunction-card {
+            min-width: 280px;
+            background: rgba(255, 59, 48, 0.04);
+            border: 1px solid rgba(255, 59, 48, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .conjunction-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 3px;
+            height: 100%;
+            background: var(--accent-red);
+        }
+
+        .conjunction-card:hover, .conjunction-card.active {
+            background: rgba(255, 59, 48, 0.08);
+            border-color: var(--accent-red);
+            box-shadow: 0 0 10px rgba(255, 59, 48, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .conjunction-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        .threat-alert {
+            color: var(--accent-red);
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .conjunction-title {
+            font-size: 15px;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+
+        .conjunction-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .conjunction-meta span span {
+            color: var(--accent-red);
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+        }
+
+        .no-conjunctions-msg {
+            color: var(--text-muted);
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-left: 10px;
+        }
+
+        .no-conjunctions-msg ion-icon {
+            color: var(--accent-cyan);
+            font-size: 20px;
+        }
+
+        /* Orbit Environment Colors */
+        .leo-badge { color: #00f0ff; }
+        .meo-badge { color: #3b82f6; }
+        .geo-badge { color: #a855f7; }
+        .heo-badge { color: #10b981; }
+
+        /* Keyframe Animations */
+        @keyframes pulse-glow {
+            0%, 100% {
+                text-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+                transform: scale(1);
+            }
+            50% {
+                text-shadow: 0 0 20px rgba(0, 240, 255, 0.7);
+                transform: scale(1.05);
+            }
+        }
+
+        @keyframes pulse-telemetry {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.08); }
+        }
+
+        /* Standard 3D HUD controls overlay */
+        .controls-overlay {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: auto;
+        }
+
+        .ctrl-btn {
+            width: 38px;
+            height: 38px;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 50%;
+            color: var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.3s;
+            backdrop-filter: var(--glass-blur);
+        }
+
+        .ctrl-btn:hover {
+            border-color: var(--accent-cyan);
+            background: rgba(0, 240, 255, 0.1);
+            box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+        }
+
+        /* Custom Responsive Adjustments */
+        @media (max-width: 1024px) {
+            #hud-container {
+                grid-template-columns: 280px 1fr 280px;
+            }
+        }
+
+        @media (max-width: 820px) {
+            body {
+                overflow-y: auto;
+                height: auto;
+                min-height: 100vh;
+            }
+
+            #hud-container {
+                position: relative;
+                height: auto;
+                min-height: 100vh;
+                display: grid;
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 58vh auto auto;
+                grid-template-areas:
+                    "header"
+                    "space"
+                    "left"
+                    "right"
+                    "bottom";
+                padding: 8px;
+                gap: 8px;
+            }
+
+            header {
+                min-height: 58px;
+                padding: 8px 10px;
+                gap: 10px;
+            }
+
+            .logo-text h1 {
+                font-size: 14px;
+            }
+
+            .live-stats {
+                gap: 6px;
+                flex-wrap: wrap;
+                justify-content: flex-end;
+                font-size: 11px;
+            }
+
+            .stat-badge {
+                padding: 4px 7px;
+            }
+
+            #left-hud, #right-hud, #bottom-hud {
+                max-height: none;
+                overflow: visible;
+                padding: 12px;
+            }
+
+            #globe-container {
+                height: 58vh;
+                min-height: 340px;
+            }
+
+            .controls-overlay {
+                right: 12px;
+                bottom: auto;
+                top: 10px;
+            }
+
+            .auth-panel {
+                top: 70px;
+                right: 8px;
+                left: 8px;
+                width: auto;
+            }
+
+            .conjunctions-container {
+                height: auto;
+                min-height: 96px;
+            }
+        }
+
+        /* Center space for 3D globe */
+        #space {
+            grid-area: space;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .playback-panel {
+            pointer-events: auto;
+            padding: 0 4px 10px;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+            margin-bottom: 10px;
+        }
+
+        .playback-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 8px 0;
+        }
+
+        .playback-controls .hud-btn {
+            min-width: 44px;
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+
+        .playback-controls select {
+            background: rgba(0, 20, 40, 0.8);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            color: #e2e8f0;
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-family: 'Rajdhani', sans-serif;
+        }
+
+        #playback-time-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px;
+            color: var(--accent-cyan);
+            display: block;
+            margin-top: 4px;
+        }
+
+        #playback-slider {
+            width: 100%;
+            margin-top: 6px;
+        }
+
+        .playback-live .hud-btn#btn-live {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+
+        #globe-container {
+            width: 100%;
+            /* Ensure the globe area fills the available central HUD row
+               accounting for header (70px), bottom (240px) and container padding (30px) */
+            height: calc(100vh - 340px);
+            min-height: 480px;
+            position: relative;
+            overflow: visible;
+        }
+
+        /* Panels must sit above the globe canvas */
+        #left-hud, #right-hud, header, #bottom-hud {
+            position: relative;
+            z-index: 2;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 3D Viewport container removed (globe now lives in central HUD area) -->
+
+    <!-- Camera controls overlay moved to #space grid cell -->
+
+    <!-- HUD Overlay Structure -->
+    <div id="hud-container">
+        
+        <!-- Header -->
+        <header class="glass-panel">
+            <div class="logo-section">
+                <ion-icon name="planet" class="logo-icon"></ion-icon>
+                <div class="logo-text">
+                    <h1>ORBITAL RISK TELEMETRY</h1>
+                </div>
+            </div>
+            
+            <div class="live-stats">
+                <div class="stat-badge">
+                    <ion-icon name="radar"></ion-icon>
+                    SATELLITES PLOTTED: <span id="stat-sats">0</span>
+                </div>
+                <div class="stat-badge alert-danger" id="stat-threat-badge">
+                    <ion-icon name="warning"></ion-icon>
+                    CONJUNCTION THREATS: <span id="stat-threats">0</span>
+                </div>
+                <button class="hud-btn icon-action" id="btn-auth-toggle" title="Account"><ion-icon name="person"></ion-icon></button>
+            </div>
+        </header>
+        
+        <!-- Left Panel: Filters -->
+        <aside id="left-hud" class="glass-panel">
+            <div>
+                <h3 class="section-title"><ion-icon name="options"></ion-icon> CONTROL FILTERS</h3>
+                
+                <div class="filter-group" style="margin-bottom: 15px;">
+                    <label class="filter-label">Search Object</label>
+                    <input type="search" id="search-name" name="satellite-search" placeholder="Enter Satellite Name..." autocomplete="off" value="">
+                </div>
+                
+                <div class="filter-group" style="margin-bottom: 15px;">
+                    <label class="filter-label">Orbital Environment</label>
+                    <div class="btn-group">
+                        <button class="hud-btn active" data-orbit="ALL">ALL</button>
+                        <button class="hud-btn" data-orbit="LEO">LEO</button>
+                        <button class="hud-btn" data-orbit="MEO">MEO</button>
+                        <button class="hud-btn" data-orbit="GEO">GEO</button>
+                    </div>
+                </div>
+
+                <div class="filter-group" style="margin-bottom: 15px;">
+                    <label class="filter-label">Country/Agency</label>
+                    <select id="select-country" style="width: 100%; padding: 8px; border-radius: 6px; background: rgba(0,20,40,0.8); border: 1px solid rgba(0,240,255,0.3); color: #e2e8f0; font-family: 'Rajdhani', sans-serif; cursor: pointer; font-size: 14px;">
+                        <option value="" style="background: #0a1428; color: #e2e8f0;">All Countries</option>
+                        <option value="USA" style="background: #0a1428; color: #e2e8f0;">USA</option>
+                        <option value="Russia" style="background: #0a1428; color: #e2e8f0;">Russia</option>
+                        <option value="China" style="background: #0a1428; color: #e2e8f0;">China</option>
+                        <option value="EU" style="background: #0a1428; color: #e2e8f0;">European Union</option>
+                        <option value="India" style="background: #0a1428; color: #e2e8f0;">India</option>
+                        <option value="Japan" style="background: #0a1428; color: #e2e8f0;">Japan</option>
+                        <option value="France" style="background: #0a1428; color: #e2e8f0;">France</option>
+                        <option value="Other" style="background: #0a1428; color: #e2e8f0;">Other</option>
+                    </select>
+                </div>
+
+                <div class="filter-group" style="margin-bottom: 15px;">
+                    <div class="slider-container">
+                        <div class="slider-header">
+                            <span class="filter-label">Max Inclination</span>
+                            <span id="incl-val" style="color: var(--accent-cyan); font-family: 'Orbitron', sans-serif;">180°</span>
+                        </div>
+                        <input type="range" id="slider-incl" min="0" max="180" value="180">
+                    </div>
+                </div>
+                
+                <div class="filter-group" style="margin-bottom: 15px;">
+                    <div class="slider-container">
+                        <div class="slider-header">
+                            <span class="filter-label">Max Altitude</span>
+                            <span id="alt-val" style="color: var(--accent-cyan); font-family: 'Orbitron', sans-serif;">40,000 km</span>
+                        </div>
+                        <input type="range" id="slider-alt" min="200" max="40000" value="40000">
+                    </div>
+                </div>
+                
+                <div class="filter-group" style="margin-bottom: 15px;">
+                    <label class="filter-label">Conjunction Threshold</label>
+                    <div class="slider-container">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span style="font-size: 12px; color: var(--text-muted);">Screening distance</span>
+                            <span id="threshold-val" style="color: var(--accent-red); font-family: 'Orbitron', sans-serif;">500 km</span>
+                        </div>
+                        <input type="range" id="slider-threshold" min="10" max="2000" step="10" value="500">
+                    </div>
+                </div>
+
+                <div class="filter-group" style="margin-bottom: 15px;">
+                    <label class="filter-label">Show Favorites</label>
+                    <div class="btn-group">
+                        <button class="hud-btn" id="btn-favorites-all" data-fav="ALL">ALL</button>
+                        <button class="hud-btn" id="btn-favorites-only" data-fav="FAVORITES">⭐ FAVORITES</button>
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Threat Classification</label>
+                    <select id="select-threat">
+                        <option value="ALL">ALL CATALOG OBJECTS</option>
+                        <option value="THREAT">CONJUNCTION HAZARDS (< 500km)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Global Stats Brief -->
+            <div style="margin-top: auto;">
+                <h3 class="section-title"><ion-icon name="analytics"></ion-icon> ENVIRONMENT STATS</h3>
+                <div class="telemetry-card">
+                    <div class="data-row">
+                        <span class="data-label">Avg Altitude:</span>
+                        <span class="data-value" id="stat-avg-alt">0 km</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Max Speed:</span>
+                        <span class="data-value" id="stat-max-speed">0 km/s</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Orbit LEO:</span>
+                        <span class="data-value leo-badge" id="dist-leo">0</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Orbit GEO:</span>
+                        <span class="data-value geo-badge" id="dist-geo">0</span>
+                    </div>
+                </div>
+
+                <h3 class="section-title" style="margin-top: 14px;"><ion-icon name="radio"></ion-icon> GROUND VISIBILITY</h3>
+                <div class="telemetry-card">
+                    <div class="data-row">
+                        <span class="data-label">Visible Links:</span>
+                        <span class="data-value highlight" id="ground-visible-count">0</span>
+                    </div>
+                    <div class="advanced-list" id="ground-visibility-list"></div>
+                </div>
+
+                <h3 class="section-title" style="margin-top: 14px;"><ion-icon name="flame"></ion-icon> LAUNCH WATCH</h3>
+                <div class="telemetry-card">
+                    <div class="advanced-list" id="launch-list"></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Center panel: 3D Globe -->
+        <div id="space">
+            <div id="globe-container"></div>
+            <!-- Camera controls overlay -->
+            <div class="controls-overlay">
+                <div class="ctrl-btn" id="btn-zoom-in" title="Zoom In"><ion-icon name="add"></ion-icon></div>
+                <div class="ctrl-btn" id="btn-zoom-out" title="Zoom Out"><ion-icon name="remove"></ion-icon></div>
+                <div class="ctrl-btn" id="btn-reset" title="Reset Camera"><ion-icon name="sync"></ion-icon></div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Telemetry Dashboard -->
+        <aside id="right-hud" class="glass-panel">
+            <h3 class="section-title"><ion-icon name="barcode"></ion-icon> TELEMETRY STREAM</h3>
+            <div id="telemetry-display">
+                <!-- Unselected placeholder -->
+                <div class="unselected-prompt" id="telemetry-placeholder">
+                    <ion-icon name="radio-outline"></ion-icon>
+                    <p>Telemetry Offline</p>
+                    <p style="font-size: 13px; color: var(--text-muted);">Select a tracking node on the 3D globe or select an active hazard card below to establish a real-time telemetry link.</p>
+                </div>
+                
+                <!-- Telemetry Content (hidden initially) -->
+                <div id="telemetry-content" style="display: none; flex-direction: column; gap: 15px; height: 100%;">
+                    <button id="btn-favorite-sat" class="fav-button"><ion-icon name="heart-outline"></ion-icon> ADD TO FAVORITES</button>
+                    
+                    <div class="telemetry-card">
+                        <div class="card-header">Target Identity</div>
+                        <div class="data-row">
+                            <span class="data-label">Identity:</span>
+                            <span class="data-value highlight" id="tel-name">-</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Classification:</span>
+                            <span class="data-value" id="tel-class">-</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Country/Agency:</span>
+                            <span class="data-value" id="tel-country">-</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Inclination:</span>
+                            <span class="data-value" id="tel-incl">-</span>
+                        </div>
+                    </div>
+
+                    <div class="telemetry-card">
+                        <div class="card-header">Catalog Specifications</div>
+                        <div class="data-row">
+                            <span class="data-label">NORAD ID:</span>
+                            <span class="data-value highlight" id="tel-norad">—</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Object ID:</span>
+                            <span class="data-value" id="tel-object-id">—</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Operator:</span>
+                            <span class="data-value" id="tel-operator">—</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Launch Date:</span>
+                            <span class="data-value" id="tel-launch">—</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Decay Date:</span>
+                            <span class="data-value" id="tel-decay">—</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">TLE Epoch:</span>
+                            <span class="data-value" id="tel-tle-epoch">—</span>
+                        </div>
+                    </div>
+                    
+                    <div class="telemetry-card">
+                        <div class="card-header">Geodetic Coordinates</div>
+                        <div class="data-row">
+                            <span class="data-label">Latitude:</span>
+                            <span class="data-value" id="tel-lat">-</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Longitude:</span>
+                            <span class="data-value" id="tel-lon">-</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Altitude:</span>
+                            <span class="data-value highlight" id="tel-alt">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="telemetry-card">
+                        <div class="card-header">Velocity Diagnostics</div>
+                        <div class="data-row">
+                            <span class="data-label">Orbital Speed:</span>
+                            <span class="data-value highlight" id="tel-speed">-</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Vector Status:</span>
+                            <span class="data-value" style="color: #10b981;">STABLE</span>
+                        </div>
+                    </div>
+                    
+                    <div class="telemetry-card" id="closest-approach-card" style="display: none;">
+                        <div class="card-header" style="color: var(--accent-red);">Conjunction Threat</div>
+                        <div class="data-row">
+                            <span class="data-label">Conjunction Node:</span>
+                            <span class="data-value danger" id="tel-con-node">-</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">3D Separation:</span>
+                            <span class="data-value danger" id="tel-con-dist">-</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">AI Collision Prob:</span>
+                            <span class="data-value danger" id="tel-con-prob">-</span>
+                        </div>
+                        <div class="data-row" style="flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 4px;">
+                            <span class="data-label">Primary Risk Drivers:</span>
+                            <span class="data-value" id="tel-con-factors" style="font-size: 13px; color: var(--accent-yellow); line-height: 1.3; font-weight: 600;">-</span>
+                        </div>
+                        <div class="data-row" style="flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 4px;">
+                            <span class="data-label">Evasion Plan:</span>
+                            <span class="data-value" id="tel-con-maneuver" style="font-size: 13px; color: #10b981; line-height: 1.3; font-weight: 600;">-</span>
+                        </div>
+                    </div>
+
+                    <div class="telemetry-card">
+                        <div class="card-header">Advanced Risk Layers</div>
+                        <div class="data-row">
+                            <span class="data-label">Debris Clouds:</span>
+                            <span class="data-value danger" id="debris-cloud-count">0</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Chain Probability:</span>
+                            <span class="data-value danger" id="debris-chain-prob">0</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Heatmap Peak:</span>
+                            <span class="data-value highlight" id="heatmap-max-density">0</span>
+                        </div>
+                        <div class="advanced-list" id="maneuver-list"></div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Bottom Panel: Conjunction alerts slider -->
+        <footer id="bottom-hud" class="glass-panel">
+            <div class="playback-panel playback-live" id="playback-panel">
+                <label class="filter-label" style="margin: 0;">ORBIT TIMELINE — 24H REPLAY</label>
+                <div class="playback-controls">
+                    <button type="button" class="hud-btn active" id="btn-live" title="Return to live feed">LIVE</button>
+                    <button type="button" class="hud-btn" id="btn-playback-rewind" title="Rewind 15 min">⏪ 15m</button>
+                    <button type="button" class="hud-btn" id="btn-playback-play" title="Play">▶</button>
+                    <button type="button" class="hud-btn" id="btn-playback-pause" title="Pause">⏸</button>
+                    <select id="playback-speed" title="Playback speed">
+                        <option value="60">60×</option>
+                        <option value="300" selected>300×</option>
+                        <option value="900">900×</option>
+                        <option value="3600">3600×</option>
+                    </select>
+                </div>
+                <input type="range" id="playback-slider" min="0" max="1440" value="1440" step="1">
+                <span id="playback-time-label">LIVE — real-time propagation</span>
+            </div>
+            <h3 class="section-title" style="margin-bottom: 2px;">
+                <ion-icon name="flash" style="color: var(--accent-red);"></ion-icon> 
+                <span id="conjunction-stream-title">CONJUNCTION WARNING STREAM (THRESHOLD &lt; 500 KM)</span>
+            </h3>
+            
+            <div class="conjunctions-container" id="conjunctions-list">
+                <!-- Conjunctions dynamically loaded -->
+                <div class="no-conjunctions-msg">
+                    <ion-icon name="checkmark-circle-outline"></ion-icon>
+                    <span>Orbital space environment clear. No active conjunctions detected.</span>
+                </div>
+            </div>
+        </footer>
+        
+    </div>
+
+    <section class="auth-panel glass-panel" id="auth-panel">
+        <h3 class="section-title"><ion-icon name="person-circle"></ion-icon> ACCOUNT</h3>
+        <div id="auth-signed-out">
+            <div class="filter-group" style="margin-bottom: 8px;">
+                <label class="filter-label">Email</label>
+                <input type="text" id="auth-email" placeholder="operator@example.com" autocomplete="email">
+            </div>
+            <div class="filter-group" style="margin-bottom: 8px;">
+                <label class="filter-label">Password</label>
+                <input type="password" id="auth-password" placeholder="Minimum 8 characters" autocomplete="current-password" style="width:100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(0,240,255,0.15); padding: 10px 12px; border-radius: 6px; color: var(--text-main); font-family: 'Rajdhani', sans-serif;">
+            </div>
+            <div class="auth-grid">
+                <button class="hud-btn" id="btn-login">LOGIN</button>
+                <button class="hud-btn" id="btn-signup">SIGNUP</button>
+            </div>
+        </div>
+        <div id="auth-signed-in" style="display:none;">
+            <div class="telemetry-card">
+                <div class="data-row"><span class="data-label">User:</span><span class="data-value highlight" id="auth-user-label">-</span></div>
+                <div class="data-row"><span class="data-label">Role:</span><span class="data-value" id="auth-role-label">-</span></div>
+            </div>
+            <div class="filter-group" style="margin-top: 8px;">
+                <label class="filter-label">Alert Threshold KM</label>
+                <input type="text" id="pref-alert-threshold" placeholder="50">
+            </div>
+            <div class="filter-group" style="margin-top: 8px;">
+                <label class="filter-label">Webhook URL</label>
+                <input type="text" id="pref-webhook" placeholder="https://example.com/webhook">
+            </div>
+            <div class="auth-grid" style="margin-top: 8px;">
+                <button class="hud-btn" id="btn-save-prefs">SAVE PREFS</button>
+                <button class="hud-btn" id="btn-logout">LOGOUT</button>
+            </div>
+        </div>
+        <div class="auth-status" id="auth-status"></div>
+    </section>
+
+    <!-- Scripts: Three.js and Logic -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Include modular 3D globe script -->
+    <script src="globe.js"></script>
+    <!-- Vendored Socket.IO client (load synchronously if available) -->
+    <script src="vendor/socket.io.min.js"></script>
+    <!-- Socket.IO client for realtime updates (local shim vendor) -->
+    <script src="vendor/socket.io.local.js"></script>
+    <!-- Include modular UI & polling script -->
+    <script src="ui.js"></script>
+    <!-- Local ionicons replacement to avoid CDN/CORS during development -->
+    <script src="vendor/ionicons.local.js"></script>
+</body>
+</html>
