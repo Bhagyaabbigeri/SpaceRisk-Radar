@@ -431,10 +431,11 @@ The launch tracker (`launches.py`) provides visibility into the near-term launch
 
 | | |
 |:---:|:---:|
-| <img src="screenshots/sc1.png" width="400" /><br><b>Global Orbital Network</b> | <img src="screenshots/sc2.png" width="400" /><br><b>Real-time Telemetry HUD</b> |
-| <img src="screenshots/sc3.png" width="400" /><br><b>Polar Coverage Analysis</b> | <img src="screenshots/sc4.png" width="400" /><br><b>Conjunction Threat Detection</b> |
-| <img src="screenshots/sc5.png" width="400" /><br><b>Account & Control Panel</b> | <img src="screenshots/sc6.png" width="400" /><br><b>Deep Space Monitoring</b> |
-| <img src="screenshots/sc7.png" width="400" /><br><b>Mission Replay Timeline</b> | |
+| <img src="screenshots/SpaceRisk-Rader1.png" width="400" /><br><b>Global Orbital Network</b> | <img src="screenshots/SpaceRisk-Rader2.png" width="400" /><br><b>Real-time Telemetry HUD</b> |
+| <img src="screenshots/SpaceRisk-Rader3.png" width="400" /><br><b>Polar Coverage Analysis</b> | <img src="screenshots/SpaceRisk-Rader4.png" width="400" /><br><b>Conjunction Threat Detection</b> |
+| <img src="screenshots/SpaceRisk-Rader5.png" width="400" /><br><b>Account & Control Panel</b> | <img src="screenshots/SpaceRisk-Rader6.png" width="400" /><br><b>Deep Space Monitoring</b> |
+| <img src="screenshots/SpaceRisk-Rader7.png" width="400" /><br><b>Mission Replay Timeline</b> | <img src="screenshots/SpaceRisk-Rader8.png" width="400" /><br><b>Satellite Tracking Dashboard</b> |
+| <img src="screenshots/SpaceRisk-Rader9.png" width="400" /><br><b>Operational HUD View</b> | |
 
 <p align="center"><em>SpaceRisk Radar dashboard showing real-time satellite tracking, conjunction threat detection, and orbital telemetry HUD panels</em></p>
 
