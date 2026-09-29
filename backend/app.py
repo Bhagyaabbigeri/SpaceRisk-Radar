@@ -4,7 +4,7 @@ import time
 import threading
 from datetime import datetime, timezone
 from typing import Optional
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from flask_socketio import SocketIO
 import logging
@@ -34,7 +34,10 @@ from backend.cache_layer import cache_layer
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
+# Resolve frontend directory relative to project root
+FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
+
+app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
 # Enable CORS for all routes
 CORS(app)
 # Socket.IO server for pushing realtime updates to connected clients
@@ -380,109 +383,20 @@ def emit_objects_worker():
 
 @app.route('/', methods=['GET'])
 def root():
-    """
-    Root status page displaying a premium terminal layout of active routes
-    to assist developers in connecting the static client.
-    """
-    return """
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>Orbital Risk API Console</title>
-        <style>
-            body {
-                background: #030712;
-                color: #e2e8f0;
-                font-family: 'Consolas', monospace;
-                padding: 40px;
-                max-width: 800px;
-                margin: auto;
-                line-height: 1.6;
-            }
-            .panel {
-                border: 1px solid rgba(0, 240, 255, 0.2);
-                background: rgba(6, 11, 25, 0.6);
-                border-radius: 8px;
-                padding: 30px;
-                box-shadow: 0 0 20px rgba(0, 240, 255, 0.05);
-            }
-            h1 {
-                color: #00f0ff;
-                font-size: 24px;
-                margin-top: 0;
-                border-bottom: 2px solid rgba(0, 240, 255, 0.2);
-                padding-bottom: 10px;
-                text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
-            }
-            .badge {
-                display: inline-block;
-                background: rgba(16, 185, 129, 0.1);
-                color: #10b981;
-                border: 1px solid rgba(16, 185, 129, 0.3);
-                padding: 2px 8px;
-                border-radius: 4px;
-                font-size: 12px;
-                font-weight: bold;
-            }
-            ul {
-                list-style: none;
-                padding-left: 0;
-            }
-            li {
-                margin-bottom: 15px;
-                background: rgba(255, 255, 255, 0.02);
-                padding: 10px 15px;
-                border-radius: 6px;
-                border-left: 3px solid #00f0ff;
-            }
-            a {
-                color: #00f0ff;
-                text-decoration: none;
-            }
-            a:hover {
-                text-decoration: underline;
-            }
-            .meta {
-                color: #94a3b8;
-                font-size: 13px;
-                margin-top: 20px;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="panel">
-            <h1>ORBITAL RISK API ONLINE <span class="badge">ACTIVE</span></h1>
-            <p>The space situational awareness propagation engine is successfully running in the background. The following endpoints are exposed for coordinates streaming:</p>
-            <ul>
-                <li>
-                    <strong>Live Satellite Coordinates:</strong><br>
-                    <a href="/api/objects" target="_blank">/api/objects</a> - Streaming latitude, longitude, speed, and geodetic altitude.
-                </li>
-                <li>
-                    <strong>Conjunction Threat Alerts:</strong><br>
-                    <a href="/api/conjunctions" target="_blank">/api/conjunctions</a> - Screener flagged events under 500 km.
-                </li>
-                <li>
-                    <strong>Global Environment Stats:</strong><br>
-                    <a href="/api/stats" target="_blank">/api/stats</a> - Orbital class counts and metrics.
-                </li>
-                <li>
-                    <strong>Advanced Overlays:</strong><br>
-                    <a href="/api/ground-visibility" target="_blank">/api/ground-visibility</a>,
-                    <a href="/api/maneuvers" target="_blank">/api/maneuvers</a>,
-                    <a href="/api/debris-risk" target="_blank">/api/debris-risk</a>,
-                    <a href="/api/launches" target="_blank">/api/launches</a>,
-                    <a href="/api/heatmap" target="_blank">/api/heatmap</a>
-                </li>
-            </ul>
-            <div class="meta">
-                * Note: To launch the full visual 3D control visualizer, please host the static <code>frontend</code> folder on Port 8000 and access <code>http://localhost:8000/index.html</code>.
-            </div>
-        </div>
-    </body>
-    </html>
-    """
+    """Serve the frontend index.html for the full-stack single-service deployment."""
+    return send_from_directory(FRONTEND_DIR, 'index.html')
+
+
+@app.route('/<path:path>', methods=['GET'])
+def serve_static(path):
+    """Serve frontend static assets (JS, CSS, images, etc.).
+    Falls back to index.html for unknown paths so the SPA works correctly."""
+    import os as _os
+    target = _os.path.join(FRONTEND_DIR, path)
+    if _os.path.isfile(target):
+        return send_from_directory(FRONTEND_DIR, path)
+    # Fallback: serve index.html for any unrecognised path
+    return send_from_directory(FRONTEND_DIR, 'index.html')
 
 @app.route('/health', methods=['GET'])
 def health_check():
