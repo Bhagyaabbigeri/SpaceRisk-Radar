@@ -43,6 +43,17 @@ socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading')
 # Global variables for TLE storage and thread safety
 GLOBAL_TLES = []
 TLES_LOCK = threading.Lock()
+
+# New: Optimization Cache for Dashboard performance
+GLOBAL_STATE = {
+    "objects": [],
+    "satellites": [],
+    "conjunctions": [],
+    "stats": {},
+    "timestamp": None
+}
+GLOBAL_STATE_LOCK = threading.Lock()
+
 # Limit how many TLEs are propagated for realtime visualization and screening
 # Increased from 300 to 2000 to allow more objects to be plotted (higher CPU/memory cost)
 PROPAGATION_LIMIT = 2000
@@ -50,6 +61,8 @@ THRESHOLD_LOCK = threading.Lock()
 CONJUNCTION_THRESHOLD_KM = 500.0
 LAST_CONJUNCTIONS = []
 LAST_CONJUNCTIONS_LOCK = threading.Lock()
+LAST_KESSLER = {}
+LAST_KESSLER_LOCK = threading.Lock()
 
 
 def _get_threshold() -> float:
@@ -102,6 +115,8 @@ def _build_object_entry(tle, state, socket_format: bool = False) -> dict:
         "country": get_satellite_country(tle.name),
         "speed_kms": state.speed_kms,
         "timestamp": state.timestamp,
+        "tle_line1": tle.line1,
+        "tle_line2": tle.line2,
     }
     if socket_format:
         entry["lat"] = state.latitude
@@ -324,7 +339,15 @@ def emit_objects_worker():
             except Exception as e:
                 logger.debug(f"Socket emit (stats) error: {e}")
 
-            # 4) Emit additive advanced-analysis overlays. Each calculation is
+            # 4) Update Global State Cache (New Optimization)
+            with GLOBAL_STATE_LOCK:
+                GLOBAL_STATE["objects"] = objects
+                GLOBAL_STATE["satellites"] = satellites
+                GLOBAL_STATE["conjunctions"] = conjs
+                GLOBAL_STATE["stats"] = stats_payload
+                GLOBAL_STATE["timestamp"] = dt.isoformat()
+
+            # 4b) Emit additive advanced-analysis overlays.
             # capped or binned so the live loop remains bounded.
             try:
                 visibility_payload = compute_ground_visibility(objects)
@@ -340,6 +363,8 @@ def emit_objects_worker():
 
             try:
                 debris_payload = simulate_kessler_risk(satellites, conjs if 'conjs' in locals() else [])
+                with LAST_KESSLER_LOCK:
+                    LAST_KESSLER.update(debris_payload)
                 socketio.emit('debris_risk', debris_payload, broadcast=True)
             except Exception as e:
                 logger.debug(f"Socket emit (debris_risk) error: {e}")
@@ -459,11 +484,30 @@ def root():
     </html>
     """
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Lightweight health check for Orbital Command integration."""
+    with TLES_LOCK:
+        count = len(GLOBAL_TLES)
+    return jsonify({
+        "status": "ok",
+        "tracked_objects": count,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+
 @app.route('/api/objects', methods=['GET'])
 def get_objects():
     """
     Propagated satellite list. Query param `at` (ISO-8601 UTC) for historical replay.
     """
+    at_param = request.args.get('at')
+
+    # Optimization: If no time specified, return the latest background calculation
+    if not at_param:
+        with GLOBAL_STATE_LOCK:
+            if GLOBAL_STATE["objects"]:
+                return jsonify(GLOBAL_STATE["objects"])
+
     with TLES_LOCK:
         tles_copy = list(GLOBAL_TLES)
 
@@ -573,6 +617,18 @@ def get_conjunctions():
     Conjunctions under threshold km. Query: threshold, at (ISO-8601 UTC).
     """
     threshold = request.args.get('threshold', default=_get_threshold(), type=float)
+    at_param = request.args.get('at')
+
+    # Optimization: return background result if no 'at'
+    if not at_param:
+        with GLOBAL_STATE_LOCK:
+            if GLOBAL_STATE["conjunctions"]:
+                return jsonify({
+                    "conjunctions": GLOBAL_STATE["conjunctions"],
+                    "count": len(GLOBAL_STATE["conjunctions"]),
+                    "threshold_km": threshold,
+                    "timestamp": GLOBAL_STATE["timestamp"]
+                })
 
     with TLES_LOCK:
         tles_copy = list(GLOBAL_TLES)
@@ -610,6 +666,13 @@ def get_stats():
     across LEO, MEO, GEO, and HEO space environments.
     """
     threshold = request.args.get('threshold', default=_get_threshold(), type=float)
+    at_param = request.args.get('at')
+
+    # Optimization: return background result if no 'at'
+    if not at_param:
+        with GLOBAL_STATE_LOCK:
+            if GLOBAL_STATE["stats"]:
+                return jsonify(GLOBAL_STATE["stats"])
 
     with TLES_LOCK:
         tles_copy = list(GLOBAL_TLES)
@@ -716,6 +779,16 @@ def get_maneuvers():
 def get_debris_risk():
     """Cascading debris risk simulation seeded by current conjunctions."""
     threshold = request.args.get('threshold', default=_get_threshold(), type=float)
+    at_param = request.args.get('at')
+
+    # Optimization: return background result if no 'at'
+    if not at_param:
+        with LAST_KESSLER_LOCK:
+            if LAST_KESSLER:
+                payload = dict(LAST_KESSLER)
+                payload["threshold_km"] = threshold
+                payload["timestamp"] = datetime.now(timezone.utc).isoformat()
+                return jsonify(payload)
 
     with TLES_LOCK:
         tles_copy = list(GLOBAL_TLES)
@@ -779,6 +852,60 @@ def _latest_conjunctions_for_alerts() -> list:
         return list(LAST_CONJUNCTIONS)
 
 
+@app.route('/api/v1/ephemeris/<int:norad_id>', methods=['GET'])
+def get_ephemeris_v1(norad_id):
+    """Retrieve propagated state vectors for a requested time window."""
+    start_str = request.args.get('start')
+    end_str = request.args.get('end')
+    step = request.args.get('step_sec', default=60, type=int)
+
+    with TLES_LOCK:
+        from backend.orbit_calculator import parse_norad_id
+        match = next((t for t in GLOBAL_TLES if parse_norad_id(t.line1) == norad_id), None)
+
+    if not match:
+        return jsonify({"error": "satellite not found"}), 404
+
+    try:
+        from datetime import timedelta
+        start = _parse_propagation_time(start_str)
+        end = _parse_propagation_time(end_str)
+
+        points = []
+        curr = start
+        while curr <= end:
+            state = calculate_orbit_state(match.line1, match.line2, curr)
+            points.append(state.to_dict())
+            curr += timedelta(seconds=step)
+            # Safety break for massive windows
+            if len(points) > 1000:
+                break
+
+        return jsonify(points)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v1/collision-risk/<int:norad_id>', methods=['GET'])
+def get_collision_risk_v1(norad_id):
+    """Retrieve collision risk details for a specific satellite from latest screening."""
+    with TLES_LOCK:
+        from backend.orbit_calculator import parse_norad_id
+        match = next((t for t in GLOBAL_TLES if parse_norad_id(t.line1) == norad_id), None)
+
+    if not match:
+        return jsonify({"error": "satellite not found"}), 404
+
+    name = match.name
+    with LAST_CONJUNCTIONS_LOCK:
+        risk_event = next((c for c in LAST_CONJUNCTIONS if c["sat1"] == name or c["sat2"] == name), None)
+
+    if not risk_event:
+        return jsonify({"status": "nominal", "message": "No active conjunctions detected"}), 200
+
+    return jsonify(risk_event)
+
+
 app.register_blueprint(create_api_v1_blueprint({
     "objects": get_objects,
     "satellite": get_satellite_detail,
@@ -790,6 +917,8 @@ app.register_blueprint(create_api_v1_blueprint({
     "debris_risk": get_debris_risk,
     "launches": get_launches,
     "heatmap": get_heatmap,
+    "ephemeris": get_ephemeris_v1,
+    "collision_risk": get_collision_risk_v1,
 }))
 
 if __name__ == '__main__':

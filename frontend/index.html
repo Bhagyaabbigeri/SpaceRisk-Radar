@@ -74,7 +74,7 @@
             pointer-events: none;
             display: grid;
             grid-template-columns: 320px 1fr 340px;
-            grid-template-rows: 70px 1fr 240px;
+            grid-template-rows: 70px 1fr auto;
             grid-template-areas: 
                 "header header header"
                 "left space right"
@@ -199,8 +199,27 @@
         }
 
 /* Search results styling */
-.search-item { padding:6px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.05); }
-.search-item:hover { background:rgba(0,240,255,0.05); }
+#search-results {
+    max-height: 220px;
+    overflow-y: auto;
+    border-radius: 6px;
+    margin-top: 6px;
+    background: rgba(6, 14, 30, 0.95);
+    border: 1px solid rgba(0, 240, 255, 0.3);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+}
+.search-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+    font-size: 14px;
+    color: #e2e8f0;
+    transition: background 0.2s;
+}
+.search-item:hover {
+    background: rgba(0, 240, 255, 0.15);
+    color: #00f0ff;
+}
 
         .filter-label {
             font-size: 13px;
@@ -209,7 +228,7 @@
         }
 
         /* Input Controls styling */
-        input[type="text"] {
+        input[type="text"], input[type="search"] {
             width: 100%;
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(0, 240, 255, 0.15);
@@ -221,7 +240,7 @@
             transition: all 0.3s;
         }
 
-        input[type="text"]:focus {
+        input[type="text"]:focus, input[type="search"]:focus {
             outline: none;
             border-color: var(--accent-cyan);
             background: rgba(0, 240, 255, 0.05);
@@ -503,26 +522,26 @@
 
         .conjunctions-container {
             display: flex;
-            gap: 15px;
+            gap: 16px;
             overflow-x: auto;
-            padding-bottom: 5px;
-            height: 110px;
+            padding: 10px 4px 14px 4px;
             align-items: center;
         }
 
         /* Custom Scrollbar */
         .conjunctions-container::-webkit-scrollbar, #right-hud::-webkit-scrollbar {
-            height: 6px;
+            height: 8px;
             width: 4px;
         }
 
         .conjunctions-container::-webkit-scrollbar-track, #right-hud::-webkit-scrollbar-track {
             background: rgba(255, 255, 255, 0.02);
+            border-radius: 4px;
         }
 
         .conjunctions-container::-webkit-scrollbar-thumb, #right-hud::-webkit-scrollbar-thumb {
-            background: rgba(0, 240, 255, 0.2);
-            border-radius: 3px;
+            background: rgba(0, 240, 255, 0.3);
+            border-radius: 4px;
         }
 
         .conjunctions-container::-webkit-scrollbar-thumb:hover, #right-hud::-webkit-scrollbar-thumb:hover {
@@ -530,15 +549,25 @@
         }
 
         .conjunction-card {
-            min-width: 280px;
-            background: rgba(255, 59, 48, 0.04);
-            border: 1px solid rgba(255, 59, 48, 0.2);
+            width: 360px;
+            min-width: 360px;
+            height: 105px;
+            min-height: 105px;
+            max-height: 105px;
+            flex-shrink: 0;
+            box-sizing: border-box;
+            background: rgba(10, 18, 32, 0.85);
+            border: 1.5px solid rgba(255, 59, 48, 0.3);
             border-radius: 8px;
-            padding: 12px;
+            padding: 12px 16px;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.25s ease-in-out;
             position: relative;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
         }
 
         .conjunction-card::before {
@@ -546,15 +575,15 @@
             position: absolute;
             left: 0;
             top: 0;
-            width: 3px;
+            width: 4px;
             height: 100%;
             background: var(--accent-red);
         }
 
         .conjunction-card:hover, .conjunction-card.active {
-            background: rgba(255, 59, 48, 0.08);
-            border-color: var(--accent-red);
-            box-shadow: 0 0 10px rgba(255, 59, 48, 0.15);
+            background: rgba(18, 28, 48, 0.95);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
             transform: translateY(-2px);
         }
 
@@ -562,39 +591,47 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 13px;
-            margin-bottom: 6px;
+            font-size: 12px;
         }
 
         .threat-alert {
             color: var(--accent-red);
             font-family: 'Orbitron', sans-serif;
-            font-weight: 700;
+            font-weight: 800;
+            font-size: 11px;
+            letter-spacing: 0.5px;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 5px;
         }
 
         .conjunction-title {
             font-size: 15px;
             font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 0.4px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            margin-bottom: 4px;
+            margin: 4px 0;
         }
 
         .conjunction-meta {
             display: flex;
             justify-content: space-between;
-            font-size: 13px;
-            color: var(--text-muted);
+            align-items: center;
+            font-size: 12px;
+            color: #94a3b8;
+            font-weight: 600;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 6px;
         }
 
         .conjunction-meta span span {
             color: var(--accent-red);
             font-family: 'Orbitron', sans-serif;
-            font-weight: 700;
+            font-weight: 800;
+            font-size: 13px;
         }
 
         .no-conjunctions-msg {
@@ -864,7 +901,7 @@
                 
                 <div class="filter-group" style="margin-bottom: 15px;">
                     <label class="filter-label">Search Object</label>
-                    <input type="search" id="search-name" name="satellite-search" placeholder="Enter Satellite Name..." autocomplete="off" value="">
+                    <input type="search" id="search-name" name="satellite_search_query" placeholder="Enter Satellite Name (e.g. ISS, STARLINK)..." autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" role="searchbox" value="">
                 </div>
                 
                 <div class="filter-group" style="margin-bottom: 15px;">

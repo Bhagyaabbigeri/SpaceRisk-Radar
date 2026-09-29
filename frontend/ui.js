@@ -335,7 +335,76 @@ window.addEventListener('DOMContentLoaded', () => {
     setupAuthPanel();
     restoreAuthSession();
     updateThresholdUi();
+    setupCameraControls();
 });
+
+// ── Camera Controls ──────────────────────────────────────────────
+function setupCameraControls() {
+    const btnZoomIn  = document.getElementById('btn-zoom-in');
+    const btnZoomOut = document.getElementById('btn-zoom-out');
+    const btnReset   = document.getElementById('btn-reset');
+
+    /**
+     * Smoothly zooms the camera in or out by scaling its distance
+     * from the target (dolly). Uses repeated micro-steps so the
+     * OrbitControls damping makes it feel fluid.
+     */
+    function smoothZoom(direction) {
+        if (!globe.isInitialized || !globe.camera || !globe.controls) return;
+        const steps   = 12;   // number of animation frames to spread the zoom over
+        const factor  = direction > 0 ? 0.93 : 1.075; // per-step scale factor
+        let   count   = 0;
+        const id = setInterval(() => {
+            if (count++ >= steps) { clearInterval(id); return; }
+            const pos     = globe.camera.position;
+            const target  = globe.controls.target;
+            const dx = pos.x - target.x;
+            const dy = pos.y - target.y;
+            const dz = pos.z - target.z;
+            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            const newDist = Math.max(
+                globe.controls.minDistance,
+                Math.min(globe.controls.maxDistance, dist * factor)
+            );
+            const scale = newDist / dist;
+            globe.camera.position.set(
+                target.x + dx * scale,
+                target.y + dy * scale,
+                target.z + dz * scale
+            );
+            globe.controls.update();
+        }, 16);  // ~60 fps
+    }
+
+    /** Smoothly returns the camera to its default starting position. */
+    function smoothReset() {
+        if (!globe.isInitialized || !globe.camera || !globe.controls) return;
+        const targetPos = { x: 0, y: 0, z: 7.5 };
+        const targetLook = { x: 0, y: 0, z: 0 };
+        const steps = 30;
+        let count = 0;
+        const id = setInterval(() => {
+            if (count++ >= steps) { clearInterval(id); return; }
+            const t = count / steps;
+            const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; // ease-in-out
+            globe.camera.position.set(
+                globe.camera.position.x + (targetPos.x - globe.camera.position.x) * ease * 0.15,
+                globe.camera.position.y + (targetPos.y - globe.camera.position.y) * ease * 0.15,
+                globe.camera.position.z + (targetPos.z - globe.camera.position.z) * ease * 0.15
+            );
+            globe.controls.target.set(
+                globe.controls.target.x + (targetLook.x - globe.controls.target.x) * ease * 0.15,
+                globe.controls.target.y + (targetLook.y - globe.controls.target.y) * ease * 0.15,
+                globe.controls.target.z + (targetLook.z - globe.controls.target.z) * ease * 0.15
+            );
+            globe.controls.update();
+        }, 16);
+    }
+
+    if (btnZoomIn)  btnZoomIn.addEventListener('click',  () => smoothZoom(+1));
+    if (btnZoomOut) btnZoomOut.addEventListener('click', () => smoothZoom(-1));
+    if (btnReset)   btnReset.addEventListener('click',   () => smoothReset());
+}
 
 // ── Render Loop ───────────────────────────────────────────────────
 function startRenderLoop() {
@@ -523,13 +592,16 @@ function renderConjunctions(conjs) {
         if (list) list.innerHTML = '';
 
         let threatCount = 0;
+        const validConjs = (conjs || []).filter(c => c && (c.obj1 || c.sat1 || c.sat_1));
 
-        (conjs || []).slice(0, 20).forEach(c => {
+        validConjs.slice(0, 20).forEach(c => {
             threatCount++;
 
             // Support both 'obj1/obj2' and 'sat1/sat2' naming
-            const name1 = c.obj1 || c.sat1 || c.sat_1;
-            const name2 = c.obj2 || c.sat2 || c.sat_2;
+            const name1 = c.obj1 || c.sat1 || c.sat_1 || 'Unknown Sat';
+            const name2 = c.obj2 || c.sat2 || c.sat_2 || 'Unknown Object';
+            const level = c.risk?.level || c.risk_level || 'HIGH';
+            const color = c.risk?.color || c.risk_color || '#ff3b30';
 
             // Draw red line between the two objects if we have their positions
             const obj1 = allSatData.find(s => s.name === name1);
@@ -544,33 +616,34 @@ function renderConjunctions(conjs) {
             // Add to conjunction warning stream list
             if (list) {
                 const div = document.createElement('div');
-                div.className = 'conjunction-item';
-                div.style.cssText = `
-                    padding: 8px 12px;
-                    margin: 4px 0;
-                    border-left: 3px solid ${c.risk?.color ?? '#ff3b30'};
-                    background: rgba(255,59,48,0.08);
-                    font-family: 'Rajdhani', sans-serif;
-                    font-size: 12px;
-                    color: #e0e0e0;
-                    border-radius: 2px;
-                    cursor: pointer;
-                `;
+                div.className = 'conjunction-card';
+                div.style.borderColor = color;
                 div.innerHTML = `
-                    <span style="color:${c.risk?.color ?? '#ff3b30'}; font-weight:bold;">
-                        ${c.risk?.level ?? 'UNKNOWN'}
-                    </span>
-                    &nbsp;|&nbsp;
-                    <strong>${name1 ?? '—'}</strong>
-                    &nbsp;↔&nbsp;
-                    <strong>${name2 ?? '—'}</strong>
-                    &nbsp;&nbsp;
-                    <span style="color:#888;">${c.distance_km ?? '?'} km apart</span>
+                    <div class="conjunction-header">
+                        <span class="threat-alert" style="color: ${color}">
+                            <ion-icon name="warning"></ion-icon> ${level} RISK
+                        </span>
+                        <span style="font-size: 11px; font-weight: 700; color: #cbd5e1; background: rgba(255,255,255,0.08); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.5px;">${c.probability_pct || ''}</span>
+                    </div>
+                    <div class="conjunction-title" title="${name1} ↔ ${name2}">${name1} ↔ ${name2}</div>
+                    <div class="conjunction-meta">
+                        <span>MISS DISTANCE</span>
+                        <span><span style="color: ${color};">${c.distance_km ?? '?'} KM</span></span>
+                    </div>
                 `;
                 div.addEventListener('click', () => fillConjunctionTelemetry(c));
                 list.appendChild(div);
             }
         });
+
+        if (list && threatCount === 0) {
+            list.innerHTML = `
+                <div class="no-conjunctions-msg">
+                    <ion-icon name="checkmark-circle-outline"></ion-icon>
+                    <span>Orbital space environment clear. No active conjunctions detected under threshold.</span>
+                </div>
+            `;
+        }
 
         setEl('stat-threats', threatCount);
         console.log(`[UI] ${threatCount} conjunction threats loaded.`);
@@ -856,70 +929,45 @@ function passesFilter(sat) {
 }
 
 // ── Search ────────────────────────────────────────────────────────
+// ── Search ────────────────────────────────────────────────────────
 function setupSearch() {
     const input = document.getElementById('search-name');
-    const resultsDiv = document.createElement('div');
-    resultsDiv.id = 'search-results';
-    resultsDiv.className = 'glass-panel';
-    resultsDiv.style.marginTop = '8px';
-    // Insert results container after the search input
-    input.parentNode.appendChild(resultsDiv);
-
-    let debounceTimer;
-    input.addEventListener('input', () => {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-            const query = input.value.trim();
-            if (!query) {
-                resultsDiv.innerHTML = '';
-                return;
-            }
-            fetch(`${API_BASE}/api/search?query=${encodeURIComponent(query)}`)
-                .then(r => r.json())
-                .then(data => {
-                    // Expected format: { results: [{ name, norad_id, object_id }] }
-                    const results = data.results || [];
-                    if (results.length) {
-                        resultsDiv.innerHTML = results.map(item => `
-                            <div class="search-item" data-name="${escapeHtml(item.name)}" data-norad="${item.norad_id || ''}" data-object="${item.object_id || ''}">
-                                ${escapeHtml(item.name)} ${item.norad_id ? '(' + item.norad_id + ')' : ''}
-                            </div>`).join('');
-                        // Attach click handler to each result
-                        resultsDiv.querySelectorAll('.search-item').forEach(el => {
-                            el.addEventListener('click', () => {
-                                const name = el.dataset.name;
-                                // set input value and clear results
-                                input.value = name;
-                                resultsDiv.innerHTML = '';
-                                // Trigger a reload to focus on the selected object (if applicable)
-                                loadSatellites();
-                            });
-                        });
-                    } else {
-                        resultsDiv.innerHTML = '<div class="search-item">No results</div>';
-                    }
-                })
-                .catch(err => {
-                    console.error('Search error', err);
-                    resultsDiv.innerHTML = '<div class="search-item">Error performing search</div>';
-                });
-        }, 300);
-    });
-
     if (!input) return;
 
-    input.value = '';
+    // Clear initial input if browser autofilled an email or credential
+    if (input.value.includes('@') || input.value.toLowerCase().includes('gmail')) {
+        input.value = '';
+    }
+
     input.setAttribute('autocomplete', 'off');
     input.setAttribute('autocapitalize', 'off');
     input.setAttribute('spellcheck', 'false');
+
+    let resultsDiv = document.getElementById('search-results');
+    if (!resultsDiv) {
+        resultsDiv = document.createElement('div');
+        resultsDiv.id = 'search-results';
+        resultsDiv.style.display = 'none';
+        input.parentNode.appendChild(resultsDiv);
+    }
+
+    // Hide dropdown on click outside
+    document.addEventListener('click', (e) => {
+        if (!input.contains(e.target) && !resultsDiv.contains(e.target)) {
+            resultsDiv.style.display = 'none';
+        }
+    });
 
     let _searchDebounce = null;
     input.addEventListener('input', () => {
         if (_searchDebounce) clearTimeout(_searchDebounce);
         _searchDebounce = setTimeout(async () => {
             const q = input.value.trim();
+
+            // If input is empty or looks like an email accidentally typed/pasted
             if (!q) {
-                // Restore normal plotted satellites from cache
+                resultsDiv.style.display = 'none';
+                resultsDiv.innerHTML = '';
                 replotFromCache();
                 hideTelemetry();
                 return;
@@ -929,99 +977,121 @@ function setupSearch() {
                 const params = buildApiTimeParams();
                 params.set('q', q);
                 const res = await fetch(`${API_BASE}/api/search?${params}`);
-                if (!res.ok) throw new Error('Search failed');
+                if (!res.ok) throw new Error('Search request failed');
                 const data = await res.json();
                 const matches = data.matches || [];
 
-                if (matches.length === 0) {
-                    // No matches found: reset mesh scales and hide telemetry
-                    Object.values(satMeshMap).forEach(m => { try { m.scale.setScalar(0.4); } catch (e) {} });
-                    hideTelemetry();
-                    return;
-                }
+                // Render autocomplete dropdown results
+                if (matches.length > 0) {
+                    resultsDiv.style.display = 'block';
+                    resultsDiv.innerHTML = matches.map(m => `
+                        <div class="search-item" data-name="${escapeHtml(m.name)}">
+                            <strong>${escapeHtml(m.name)}</strong>
+                            <span style="float: right; opacity: 0.7; font-size: 12px;">${m.altitude_km ? Math.round(m.altitude_km) + ' km' : ''}</span>
+                        </div>
+                    `).join('');
 
-                // Add search matches to allSatData so they can be plotted/processed
-                matches.forEach(match => {
-                    const exists = allSatData.some(s => s.name === match.name);
-                    if (!exists) {
-                        allSatData.push({
-                            name: match.name,
-                            lat: match.latitude,
-                            lon: match.longitude,
-                            alt_km: match.altitude_km,
-                            speed_kms: match.speed_kms,
-                            orbit: match.altitude_km < 2000 ? 'LEO' : (match.altitude_km < 35000 ? 'MEO' : (match.altitude_km < 36500 ? 'GEO' : 'HEO')),
-                            timestamp: match.timestamp
-                        });
-                    }
-                });
-
-                // Clear existing meshes
-                Object.values(satMeshMap).forEach(m => globe.removeObject(m));
-                Object.keys(satMeshMap).forEach(k => delete satMeshMap[k]);
-
-                // Plot only the matched satellites (highlighted) and other filtered satellites (shrunk)
-                let firstMatch = null;
-                const matchNames = new Set(matches.map(m => m.name));
-
-                allSatData.forEach((sat, idx) => {
-                    const isSearchResult = matchNames.has(sat.name);
-                    const passes = passesFilter(sat);
-                    if (!isSearchResult && !passes) return;
-                    if (!hasValidCoords(sat)) return;
-
-                    const pos = latLonToVec3(sat.lat, sat.lon, sat.alt_km);
-                    const color = orbitColor(sat.orbit);
-                    const mesh = globe.createSatelliteMesh(pos, color);
-
-                    if (mesh) {
-                        mesh.userData = sat;
-                        
-                        if (isSearchResult) {
-                            // Highlight matched satellites
-                            mesh.scale.setScalar(3.5);
-                            if (mesh.material && mesh.material.emissive) {
-                                mesh.material.emissive.setHex(0x00f0ff); // Cyan glow
-                                mesh.material.emissiveIntensity = 0.8;
+                    resultsDiv.querySelectorAll('.search-item').forEach(el => {
+                        el.addEventListener('click', () => {
+                            const name = el.dataset.name;
+                            input.value = name;
+                            resultsDiv.style.display = 'none';
+                            // Focus & highlight selected satellite
+                            const matchedSat = allSatData.find(s => s.name === name);
+                            if (matchedSat) {
+                                showTelemetry(matchedSat);
                             }
-                            if (!firstMatch) firstMatch = sat;
-                        } else {
-                            // Scale down other satellites
-                            mesh.scale.setScalar(0.4);
-                        }
-
-                        satMeshMap[idx] = mesh;
-                    }
-                });
-
-                // Set total plotted satellites count in HUD
-                setEl('stat-sats', matches.length);
-
-                // Add raycaster click detection
-                setupGlobeClick();
-
-                if (firstMatch) {
-                    showTelemetry(firstMatch);
+                            performSearchHighlight(name, [name]);
+                        });
+                    });
                 } else {
-                    hideTelemetry();
+                    resultsDiv.style.display = 'block';
+                    resultsDiv.innerHTML = '<div class="search-item" style="color: #94a3b8; cursor: default;">No matching objects found</div>';
                 }
+
+                const matchNames = matches.map(m => m.name);
+                performSearchHighlight(q, matchNames, matches);
+
             } catch (e) {
-                console.warn('[UI] Backend search failed, falling back to local search:', e.message);
-                // Local fallback search (original logic)
+                console.warn('[UI] Backend search error, using local catalog search:', e.message);
                 const q_lower = q.toLowerCase();
-                let firstMatch = null;
-                Object.values(satMeshMap).forEach(mesh => {
-                    if (!mesh || !mesh.userData) return;
-                    const sat = mesh.userData;
-                    const name = (sat.name || '').toString().toLowerCase();
-                    const match = name.includes(q_lower);
-                    try { mesh.scale.setScalar(match ? 3.5 : 0.4); } catch (e) {}
-                    if (match && !firstMatch) firstMatch = sat;
-                });
-                if (firstMatch) showTelemetry(firstMatch);
+                const localMatches = allSatData.filter(s => (s.name || '').toLowerCase().includes(q_lower));
+                const matchNames = localMatches.map(s => s.name);
+                
+                if (localMatches.length > 0) {
+                    resultsDiv.style.display = 'block';
+                    resultsDiv.innerHTML = localMatches.slice(0, 8).map(m => `
+                        <div class="search-item" data-name="${escapeHtml(m.name)}">
+                            <strong>${escapeHtml(m.name)}</strong>
+                        </div>
+                    `).join('');
+
+                    resultsDiv.querySelectorAll('.search-item').forEach(el => {
+                        el.addEventListener('click', () => {
+                            input.value = el.dataset.name;
+                            resultsDiv.style.display = 'none';
+                            performSearchHighlight(el.dataset.name, [el.dataset.name]);
+                        });
+                    });
+                } else {
+                    resultsDiv.style.display = 'block';
+                    resultsDiv.innerHTML = '<div class="search-item" style="color: #94a3b8; cursor: default;">No matching objects found</div>';
+                }
+                
+                performSearchHighlight(q, matchNames, localMatches);
             }
         }, 160);
     });
+}
+
+function performSearchHighlight(query, matchNames, newMatches = []) {
+    const matchSet = new Set(matchNames);
+
+    // Merge any newly discovered search matches into allSatData
+    newMatches.forEach(match => {
+        const exists = allSatData.some(s => s.name === match.name);
+        if (!exists) {
+            allSatData.push({
+                name: match.name,
+                lat: match.latitude,
+                lon: match.longitude,
+                alt_km: match.altitude_km,
+                speed_kms: match.speed_kms,
+                orbit: match.altitude_km < 2000 ? 'LEO' : (match.altitude_km < 35000 ? 'MEO' : (match.altitude_km < 36500 ? 'GEO' : 'HEO')),
+                timestamp: match.timestamp
+            });
+        }
+    });
+
+    let firstMatch = null;
+    let plottedMatches = 0;
+
+    Object.values(satMeshMap).forEach(mesh => {
+        if (!mesh || !mesh.userData) return;
+        const sat = mesh.userData;
+        const isMatch = matchSet.has(sat.name) || (sat.name || '').toLowerCase().includes(query.toLowerCase());
+
+        if (isMatch) {
+            plottedMatches++;
+            mesh.scale.setScalar(3.5);
+            if (mesh.material && mesh.material.emissive) {
+                mesh.material.emissive.setHex(0x00f0ff);
+                mesh.material.emissiveIntensity = 0.8;
+            }
+            if (!firstMatch) firstMatch = sat;
+        } else {
+            mesh.scale.setScalar(0.35);
+            if (mesh.material && mesh.material.emissive) {
+                mesh.material.emissive.setHex(0x000000);
+            }
+        }
+    });
+
+    if (firstMatch) {
+        showTelemetry(firstMatch);
+    } else {
+        hideTelemetry();
+    }
 }
 
 // ── Favorites Button ──────────────────────────────────────────────
@@ -1061,25 +1131,42 @@ function setupPlayback() {
         schedulePlaybackFetch();
     });
 
-    btnLive?.addEventListener('click', () => enterLiveMode());
+    btnLive?.addEventListener('click', () => {
+        enterLiveMode();
+        updatePlaybackButtonsUi();
+    });
     btnPlay?.addEventListener('click', () => {
         if (playbackMode === 'live') enterPlaybackMode();
         playbackPlaying = true;
+        updatePlaybackButtonsUi();
         startPlaybackLoop();
     });
     btnPause?.addEventListener('click', () => {
         playbackPlaying = false;
         stopPlaybackLoop();
+        updatePlaybackButtonsUi();
     });
     btnRewind?.addEventListener('click', () => {
         if (playbackMode === 'live') enterPlaybackMode();
         playbackTimeMs = Math.max(Date.now() - PLAYBACK_WINDOW_MS, playbackTimeMs - 15 * 60 * 1000);
         syncSliderFromTime();
         updatePlaybackLabel();
+        updatePlaybackButtonsUi();
         schedulePlaybackFetch();
     });
 
     panel?.classList.add('playback-live');
+    updatePlaybackButtonsUi();
+}
+
+function updatePlaybackButtonsUi() {
+    const btnLive = document.getElementById('btn-live');
+    const btnPlay = document.getElementById('btn-playback-play');
+    const btnPause = document.getElementById('btn-playback-pause');
+
+    if (btnLive) btnLive.classList.toggle('active', playbackMode === 'live');
+    if (btnPlay) btnPlay.classList.toggle('active', playbackMode === 'playback' && playbackPlaying);
+    if (btnPause) btnPause.classList.toggle('active', playbackMode === 'playback' && !playbackPlaying);
 }
 
 function enterLiveMode() {
@@ -1091,6 +1178,7 @@ function enterLiveMode() {
     if (slider) slider.value = slider.max;
     document.getElementById('playback-panel')?.classList.add('playback-live');
     updatePlaybackLabel();
+    updatePlaybackButtonsUi();
     loadSatellites();
     loadConjunctions();
     loadStats();
@@ -1105,6 +1193,7 @@ function enterPlaybackMode() {
     }
     syncSliderFromTime();
     updatePlaybackLabel();
+    updatePlaybackButtonsUi();
 }
 
 function startPlaybackLoop() {
