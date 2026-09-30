@@ -41,7 +41,7 @@ app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
 # Enable CORS for all routes
 CORS(app)
 # Socket.IO server for pushing realtime updates to connected clients
-socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading')
+socketio = SocketIO(app, cors_allowed_origins='*', async_mode='eventlet')
 
 # Global variables for TLE storage and thread safety
 GLOBAL_TLES = []
@@ -835,19 +835,36 @@ app.register_blueprint(create_api_v1_blueprint({
     "collision_risk": get_collision_risk_v1,
 }))
 
-if __name__ == '__main__':
-    # 1. Load TLEs in a background thread so the server starts immediately
-    # and passes the Render/Railway health check without timing out.
+# ── Background service startup ────────────────────────────────────────────────
+# This function is called at module level so it runs whether the app is started
+# via `python -m backend.app` (local dev) OR via gunicorn (production on Render).
+# Gunicorn never enters `if __name__ == '__main__':`, so background threads
+# MUST be started here at import time.
+_SERVICES_STARTED = False
+_SERVICES_LOCK = threading.Lock()
+
+
+def _start_background_services():
+    """Idempotent: start background threads exactly once per process."""
+    global _SERVICES_STARTED
+    with _SERVICES_LOCK:
+        if _SERVICES_STARTED:
+            return
+        _SERVICES_STARTED = True
+
     def _startup_tle_load():
         logger.info("Background startup: loading TLE cache...")
         try:
             global GLOBAL_TLES
+            tles = get_tles()
             with TLES_LOCK:
-                GLOBAL_TLES = get_tles()
+                GLOBAL_TLES = tles
             logger.info(f"Background startup complete. Loaded {len(GLOBAL_TLES)} satellites.")
         except Exception as se:
             logger.error(f"Background startup TLE load failed: {se}")
 
+    # 1. Load TLEs in a background thread so the server starts immediately
+    # and passes the Render health check without timing out.
     startup_thread = threading.Thread(target=_startup_tle_load, daemon=True)
     startup_thread.start()
     logger.info("TLE background loader spawned.")
@@ -855,22 +872,29 @@ if __name__ == '__main__':
     # 2. Spin up the background thread to refresh the catalog every 10 minutes
     update_thread = threading.Thread(target=tle_update_worker, daemon=True)
     update_thread.start()
-    logger.info("Background thread spawned.")
-    # 2b. Start emitter thread that pushes propagated positions to clients
+    logger.info("Background TLE refresh thread spawned.")
+
+    # 3. Start emitter thread that pushes propagated positions to clients
     emitter_thread = threading.Thread(target=emit_objects_worker, daemon=True)
     emitter_thread.start()
     logger.info("Socket.IO emitter thread spawned.")
 
-    # Start Flask-SocketIO server
+    # 4. Start alert monitoring scheduler
     alert_scheduler.start(_latest_conjunctions_for_alerts, interval_seconds=300)
     logger.info("Alert monitoring scheduler spawned.")
 
-    logger.info("Starting Flask application server...")
     try:
         routes = sorted([r.rule for r in app.url_map.iter_rules()])
         logger.info(f"Registered routes: {routes}")
     except Exception:
         logger.debug("Failed to enumerate routes")
 
+
+# Start background services at module import time (works with gunicorn and direct)
+_start_background_services()
+
+
+if __name__ == '__main__':
+    # Local dev: run with Flask-SocketIO's built-in server
     port = int(os.environ.get('PORT', 5000))
     socketio.run(app, host='0.0.0.0', port=port, debug=False, allow_unsafe_werkzeug=True)

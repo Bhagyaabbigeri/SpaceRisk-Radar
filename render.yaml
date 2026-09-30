@@ -3,7 +3,7 @@ services:
     name: spacerisk-radar
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python -m backend.app
+    startCommand: python -m gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT backend.app:app
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
