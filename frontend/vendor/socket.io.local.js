@@ -17,7 +17,7 @@
     function installShim() {
         // Original polling shim implementation (kept as fallback)
         function createSocket(baseUrl) {
-            baseUrl = baseUrl || (location.protocol + '//' + (location.hostname || '127.0.0.1') + ':5000');
+            baseUrl = baseUrl || location.origin;
 
             const listeners = Object.create(null);
             let stopped = false;

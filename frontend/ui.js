@@ -3,7 +3,11 @@
  * Fetches from Flask backend and plots satellites on the OrbitGlobe.
  */
 
-const API_BASE = 'http://127.0.0.1:5000';
+// API_BASE is intentionally empty so all requests use relative URLs.
+// This works correctly whether Flask is running locally (same-origin) or
+// deployed to Render — the frontend is always served by the same Flask process
+// that provides the API, so there is no cross-origin issue and no hardcoded host.
+const API_BASE = '';
 const API_V1_BASE = `${API_BASE}/api/v1`;
 
 // Socket.IO connection (realtime push)
@@ -17,7 +21,12 @@ function initSocketOnce() {
     if (window.socket) return window.socket;
     try {
         if (typeof io !== 'undefined') {
-            const s = io(API_BASE);
+            // Pass no argument so Socket.IO connects to the current page origin.
+            // io() with no args uses window.location, which is correct for both
+            // local dev (http://localhost:5000) and production (https://spacerisk-radar.onrender.com).
+            // DO NOT pass API_BASE ('') here — an empty string causes io() to resolve
+            // to 'https://' (missing host) which breaks the WebSocket connection.
+            const s = io();
             s.on('connect', () => {
                 console.log('[UI] Socket.IO connected');
                 s.emit('set_threshold', { threshold_km: conjunctionThresholdKm });
