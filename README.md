@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="frontend/screenshot.png" alt="SpaceRisk Radar Dashboard" width="900"/>
+  <img src="frontend/SpaceRisk_Radar_live_Dashboard.png" alt="SpaceRisk Radar Dashboard" width="900"/>
 </p>
 
 <h1 align="center">🛰️ SpaceRisk Radar</h1>
@@ -16,6 +16,26 @@
 <p align="center">
   A real-time space situational awareness platform that propagates satellite orbits using SGP4/SDP4 algorithms, detects conjunction threats, simulates Kessler syndrome cascading debris risks, and visualizes the entire orbital environment on an interactive 3D globe.
 </p>
+
+<p align="center">
+  <strong>Live Demo:</strong> <a href="https://spacerisk-radar.onrender.com/">https://spacerisk-radar.onrender.com/</a>
+  &nbsp;|&nbsp;
+  <strong>GitHub:</strong> <a href="https://github.com/Bhagyaabbigeri/SpaceRisk-Radar">https://github.com/Bhagyaabbigeri/SpaceRisk-Radar</a>
+</p>
+
+---
+
+## 🌐 Deployment & Production Status
+
+SpaceRisk Radar is deployed as a single self-contained Flask service on Render. In production, the app serves both the frontend and backend from one Python process, including the live API, Socket.IO updates, background TLE refresh, and orbital risk calculations.
+
+- Production URL: https://spacerisk-radar.onrender.com/
+- Repository: https://github.com/Bhagyaabbigeri/SpaceRisk-Radar
+- Hosting: Render
+- Runtime: Python + Flask + Gunicorn + Eventlet
+- Deployment model: one service, no separate VS Code-managed frontend/backend process required
+
+The production startup uses Gunicorn with Eventlet workers to support WebSocket connectivity and real-time telemetry. This ensures the deployed instance remains fully functional independently after deployment.
 
 ---
 
