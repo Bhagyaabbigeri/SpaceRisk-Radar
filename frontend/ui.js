@@ -21,11 +21,7 @@ function initSocketOnce() {
     if (window.socket) return window.socket;
     try {
         if (typeof io !== 'undefined') {
-            // Pass no argument so Socket.IO connects to the current page origin.
-            // io() with no args uses window.location, which is correct for both
-            // local dev (http://localhost:5000) and production (https://spacerisk-radar.onrender.com).
-            // DO NOT pass API_BASE ('') here — an empty string causes io() to resolve
-            // to 'https://' (missing host) which breaks the WebSocket connection.
+            // Let Socket.IO connect to the current page origin.
             const s = io();
             s.on('connect', () => {
                 console.log('[UI] Socket.IO connected');
