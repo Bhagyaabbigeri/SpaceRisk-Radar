@@ -836,14 +836,21 @@ app.register_blueprint(create_api_v1_blueprint({
 }))
 
 if __name__ == '__main__':
-    # 1. Synchronously pre-load TLEs once from the cache on startup
-    # so that memory is immediately populated and route calls don't block
-    logger.info("Initializing TLE cache memory on startup...")
-    try:
-        GLOBAL_TLES = get_tles()
-        logger.info(f"Startup initialization complete. Loaded {len(GLOBAL_TLES)} satellites.")
-    except Exception as se:
-        logger.error(f"Startup initialization failed to load TLE cache: {se}")
+    # 1. Load TLEs in a background thread so the server starts immediately
+    # and passes the Render/Railway health check without timing out.
+    def _startup_tle_load():
+        logger.info("Background startup: loading TLE cache...")
+        try:
+            global GLOBAL_TLES
+            with TLES_LOCK:
+                GLOBAL_TLES = get_tles()
+            logger.info(f"Background startup complete. Loaded {len(GLOBAL_TLES)} satellites.")
+        except Exception as se:
+            logger.error(f"Background startup TLE load failed: {se}")
+
+    startup_thread = threading.Thread(target=_startup_tle_load, daemon=True)
+    startup_thread.start()
+    logger.info("TLE background loader spawned.")
 
     # 2. Spin up the background thread to refresh the catalog every 10 minutes
     update_thread = threading.Thread(target=tle_update_worker, daemon=True)
@@ -858,7 +865,7 @@ if __name__ == '__main__':
     alert_scheduler.start(_latest_conjunctions_for_alerts, interval_seconds=300)
     logger.info("Alert monitoring scheduler spawned.")
 
-    logger.info("Starting Flask application server on port 5000...")
+    logger.info("Starting Flask application server...")
     try:
         routes = sorted([r.rule for r in app.url_map.iter_rules()])
         logger.info(f"Registered routes: {routes}")
