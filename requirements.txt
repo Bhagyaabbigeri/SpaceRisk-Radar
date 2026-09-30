@@ -6,3 +6,4 @@ sgp4>=2.0
 flask-cors>=3.0.10
 PyJWT>=2.8
 redis>=5.0
+gunicorn>=21.2.0
