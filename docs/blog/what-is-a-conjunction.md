@@ -45,7 +45,7 @@ This is the spectre of **Kessler syndrome**: a cascade where each collision gene
 
 If you want to learn more, the [NASA Conjunction Assessment](https://www.nasa.gov/conjunction-assessment-risk-analysis/) programme publishes detailed information about how operational conjunction assessment works. The [CelesTrak](https://celestrak.org/) website, the source of the data SpaceRisk Radar uses, also has extensive tutorials on reading TLEs and understanding orbital mechanics.
 
-And of course, you can open [SpaceRisk Radar](https://spacerisk-radar.onrender.com/) right now, lower the screening threshold to 100 km, and watch which pairs appear. The orbit replay slider lets you wind the clock forward or back and see how the picture changes — a reminder that space situational awareness is always a race against time.
+If you want to try it yourself, follow the [Getting Started](../getting-started.md) guide to run SpaceRisk Radar locally, then lower the screening threshold to 100 km and watch which pairs appear. The orbit replay slider lets you wind the clock forward or back and see how the picture changes — a reminder that space situational awareness is always a race against time.
 
 ---
 

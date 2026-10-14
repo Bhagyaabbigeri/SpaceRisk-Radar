@@ -92,4 +92,3 @@ If the globe is empty after 30 seconds, open the browser console (`F12 → Conso
 | `ModuleNotFoundError: No module named 'flask'` | Virtual environment not activated | Run `.venv\Scripts\activate` (Windows) or `source .venv/bin/activate` |
 | `Address already in use: 5000` | Another process is using port 5000 | `kill $(lsof -ti:5000)` or restart your machine |
 | Globe loads but stays empty | CelesTrak fetch failed | Check your internet connection; the app will retry on the next 10-minute cycle |
-| Slow first load on Render | Free-tier cold start | Wait up to 60 seconds for the dyno to wake |
