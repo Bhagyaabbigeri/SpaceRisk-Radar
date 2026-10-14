@@ -1,0 +1,79 @@
+site_name: SpaceRisk Radar
+site_url: https://bhagyaabbigeri.github.io/SpaceRisk-Radar/
+site_description: >-
+  Technical documentation for SpaceRisk Radar — a real-time orbital
+  collision-risk and space-debris monitoring platform.
+site_author: Bhagyashree Reddy
+repo_url: https://github.com/Bhagyaabbigeri/SpaceRisk-Radar
+repo_name: SpaceRisk-Radar
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+exclude_docs: |
+  2_MINUTE_PROJECT_OVERVIEW.md
+  INTERVIEW_DOCUMENTATION.md
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - User Guide: user-guide.md
+  - Concepts: concepts.md
+  - How It Works: how-it-works.md
+  - Limitations: limitations.md
+  - API Reference: api-reference.md
+  - Style Guide: style-guide.md
+  - Changelog: changelog.md
+  - Blog:
+      - What Is a Conjunction?: blog/what-is-a-conjunction.md
