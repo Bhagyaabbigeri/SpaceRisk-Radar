@@ -84,3 +84,9 @@ The output is useful for understanding *which* conjunctions could have the large
 SpaceRisk Radar fetches TLEs from CelesTrak's catalog, which includes both active satellites and cataloged debris objects. However, to guarantee at least one conjunction in the live view, the app always injects a **synthetic test object** called `TEST_DEBRIS_X` near the first object in the catalog. This object is not a real satellite or debris fragment — it is a placeholder for testing the risk display.
 
 You can identify it in the API by the field `"operator": "Simulated"`.
+
+---
+
+## No hosted demo
+
+There is no hosted demo of SpaceRisk Radar. To try the app, follow the [Getting Started](getting-started.md) guide to run it on your own machine.

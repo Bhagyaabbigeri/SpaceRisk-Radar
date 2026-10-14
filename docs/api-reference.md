@@ -11,7 +11,7 @@ All REST endpoints are served by the Flask backend at the same origin as the fro
 
 ### `GET /health`
 
-Lightweight health check. Used by Render to verify the service is alive.
+Lightweight health check endpoint. Returns a 200 OK response when the server is running.
 
 **Request**
 

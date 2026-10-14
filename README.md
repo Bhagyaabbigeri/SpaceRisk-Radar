@@ -15,9 +15,9 @@
 
 SpaceRisk Radar is a real-time space situational awareness platform. It fetches satellite orbital elements (TLEs) from CelesTrak every two hours, propagates up to 2,000 objects using the SGP4 model, screens every pair for close approaches, and streams the results to an interactive 3D globe in your browser via Socket.IO WebSocket — updated every 3 seconds.
 
-**[📖 Documentation](https://bhagyaabbigeri.github.io/SpaceRisk-Radar/) &nbsp;|&nbsp; [🚀 Live Demo](https://spacerisk-radar.onrender.com/) &nbsp;|&nbsp; [GitHub](https://github.com/Bhagyaabbigeri/SpaceRisk-Radar)**
+SpaceRisk Radar runs locally. Follow the Getting Started guide to run it on your own machine.
 
-> **Note:** The Render free tier spins down after inactivity. If the demo takes up to 60 seconds to load, the server is waking up.
+**[📖 Documentation](https://bhagyaabbigeri.github.io/SpaceRisk-Radar/) &nbsp;|&nbsp; [GitHub](https://github.com/Bhagyaabbigeri/SpaceRisk-Radar)**
 
 ---
 
@@ -55,16 +55,15 @@ See [Getting Started](https://bhagyaabbigeri.github.io/SpaceRisk-Radar/getting-s
 
 ---
 
-## Production deployment
+## Running the app
 
-The app runs as a single Flask process on Render, served with **Gunicorn + Eventlet workers** (one worker, WebSocket-compatible). The frontend is served as static files from the same process.
+The app runs as a single Flask process. The frontend is served as static files from the same process — no separate web server is needed.
 
+```bash
+python backend/app.py
 ```
-# Procfile (used by Render)
-web: python -m gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT backend.app:app
-```
 
-For local development, `python backend/app.py` uses Flask-SocketIO's built-in Eventlet server on port 5000. No Gunicorn is needed locally.
+Flask-SocketIO uses Eventlet in async mode. Open **http://localhost:5000** when the server is ready.
 
 ---
 
@@ -106,7 +105,7 @@ mkdocs serve
 - **TEST_DEBRIS_X** is a synthetic object always injected near the first catalog entry. It is not real.
 - **Screenshot filenames** in `screenshots/` are spelled "Rader" (a known typo in the directory). The project name is "Radar".
 - **Ground stations**: 5 stations are defined in code (not 12 as stated in the original README).
-- **Async mode**: Eventlet (not threading). See `app.py` line 44 and the Procfile.
+- **Async mode**: Eventlet (not threading). See `app.py` line 44.
 
 ---
 

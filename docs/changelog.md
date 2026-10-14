@@ -13,6 +13,10 @@ All notable changes to SpaceRisk Radar are documented here. This file follows th
 - Documentation pages: index, getting-started, user-guide, concepts, how-it-works, limitations, api-reference, style-guide, blog
 - Screenshots copied to `docs/assets/` for documentation use
 
+### Changed
+
+- Removed references to the hosted demo, which is no longer available.
+
 ---
 
 ## [1.0.0] — Initial release
@@ -35,4 +39,3 @@ All notable changes to SpaceRisk Radar are documented here. This file follows th
 - REST API with versioned `/api/v1/` routes
 - OpenAPI 3.0 spec at `/api/v1/openapi.json`
 - Swagger UI at `/api/v1/docs`
-- Gunicorn + Eventlet production deployment on Render
