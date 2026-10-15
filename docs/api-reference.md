@@ -3,7 +3,7 @@
 All REST endpoints are served by the Flask backend at the same origin as the frontend. WebSocket events use Socket.IO.
 
 !!! note
-    Routes prefixed `/api/v1/` are versioned aliases or exclusive v1 endpoints (auth, ephemeris, etc.). Routes prefixed `/api/` are the stable public endpoints. The v1 routes mirror the public routes unless noted otherwise.
+    Routes prefixed `/api/v1/` include versioned aliases and v1-only endpoints such as authentication and ephemeris. Routes prefixed `/api/` are public endpoints.
 
 ---
 
@@ -24,28 +24,29 @@ GET /health
 ```json
 {
   "status": "ok",
-  "tracked_objects": 1842,
-  "timestamp": "2024-01-15T12:00:00+00:00"
+  "tracked_objects": 16128,
+  "timestamp": "2026-10-15T12:59:59.101754+00:00"
 }
 ```
+
+Trimmed. Values change every cycle. `tracked_objects` is the loaded catalog count; `/api/stats` reports the propagated batch.
 
 ---
 
 ### `GET /api/objects`
 
-Returns all propagated satellite objects from the most recent background cycle.
+Propagates up to 2,000 catalog TLEs to the requested time. If `at` is omitted, the target time is the current UTC time.
 
 **Query parameters**
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `at` | ISO-8601 string | now | Propagate all objects to this UTC time instead of the latest background snapshot |
+| `at` | ISO-8601 string | now | Propagate the selected catalog objects to this UTC time |
 
 **Request**
 
 ```
 GET /api/objects
-GET /api/objects?at=2024-01-15T12:00:00Z
 ```
 
 **Response** — array of objects
@@ -53,24 +54,26 @@ GET /api/objects?at=2024-01-15T12:00:00Z
 ```json
 [
   {
-    "name": "ISS (ZARYA)",
-    "norad_id": 25544,
-    "object_id": "98067A",
-    "launch_date": "~1998 (catalog seq. 67)",
-    "operator": "USA/Russia",
+    "name": "CALSPHERE 1",
+    "norad_id": 900,
+    "object_id": "063C",
+    "launch_date": "~2006 (catalog seq. 3C)",
+    "operator": "Other",
     "decay_date": "Active (in catalog)",
-    "tle_epoch": "2024-01-14T10:22:00+00:00",
+    "tle_epoch": "2026-07-22T03:14:37.766112+00:00",
     "orbit": "LEO",
-    "inclination": 51.64,
-    "country": "USA/Russia",
-    "speed_kms": 7.66,
-    "timestamp": "2024-01-15T12:00:00+00:00",
-    "latitude": 42.31,
-    "longitude": -87.45,
-    "altitude_km": 421.5
+    "inclination": 90.2206,
+    "country": "Other",
+    "speed_kms": 7.347751678000258,
+    "timestamp": "2026-10-15T13:01:09.789525+00:00",
+    "lat": 53.306763086485745,
+    "lon": -129.20530745169907,
+    "alt_km": 1001.0675259375739
   }
 ]
 ```
+
+Trimmed. Values change every cycle.
 
 ---
 
@@ -91,7 +94,25 @@ Returns propagated state and catalog metadata for a single satellite by name.
 GET /api/satellite?name=ISS
 ```
 
-**Response** — single object with same fields as `/api/objects`
+**Response** — a satellite object with propagated state and catalog metadata
+
+Trimmed. Values change every cycle. Example `GET /api/satellite?name=ISS` response:
+
+```json
+{
+  "name": "ISS (ZARYA)",
+  "norad_id": 25544,
+  "object_id": "067A",
+  "orbit": "LEO",
+  "inclination": 51.6313,
+  "country": "USA/Russia",
+  "speed_kms": 7.660677048916251,
+  "timestamp": "2026-10-15T13:01:20.296060+00:00",
+  "latitude": 44.30840495694562,
+  "longitude": 169.53497061154042,
+  "altitude_km": 423.1961233613629
+}
+```
 
 **Error responses**
 
@@ -114,7 +135,7 @@ Searches the full TLE catalog by name. Returns up to 10 matches with propagated 
 **Request**
 
 ```
-GET /api/search?q=starlink
+GET /api/search?q=ISS
 ```
 
 **Response**
@@ -123,18 +144,28 @@ GET /api/search?q=starlink
 {
   "matches": [
     {
-      "name": "STARLINK-1234",
-      "latitude": 53.2,
-      "longitude": 10.4,
-      "altitude_km": 550.1,
-      "speed_kms": 7.61,
-      "timestamp": "2024-01-15T12:00:00+00:00"
+      "name": "ISS (ZARYA)",
+      "latitude": 44.304843678145076,
+      "longitude": 169.54351932101656,
+      "altitude_km": 423.1951414324485,
+      "speed_kms": 7.660677339814689,
+      "timestamp": "2026-10-15T13:01:20.405838+00:00"
+    },
+    {
+      "name": "ISS (UNITY)",
+      "latitude": 44.304843678145076,
+      "longitude": 169.54351932101656,
+      "altitude_km": 423.1951414324485,
+      "speed_kms": 7.660677339814689,
+      "timestamp": "2026-10-15T13:01:20.405838+00:00"
     }
   ],
   "count": 10,
-  "query": "starlink"
+  "query": "ISS"
 }
 ```
+
+Trimmed. Values change every cycle.
 
 ---
 
@@ -161,26 +192,26 @@ GET /api/conjunctions?threshold=200
 {
   "conjunctions": [
     {
-      "sat1": "ISS (ZARYA)",
+      "sat1": "CALSPHERE 1",
       "sat2": "TEST_DEBRIS_X",
-      "distance_km": 142.3,
-      "probability": 0.000214,
-      "probability_pct": "0.021400%",
-      "risk_level": "HIGH",
-      "risk_factors": ["Uncontrolled space debris element", "LEO orbital density multiplier"],
-      "evasion_maneuver": "Evasion recommended for ISS (ZARYA): Execute prograde delta-V burn of +0.25 m/s.",
-      "details": {
-        "sat1_pos": {"lat": 42.31, "lon": -87.45, "alt": 421.5},
-        "sat2_pos": {"lat": 43.11, "lon": -86.65, "alt": 431.5}
-      },
-      "risk": {"level": "HIGH", "color": "#ff7a00"}
+      "distance_km": 104.08,
+      "probability": 0.00000001,
+      "probability_pct": "0.000001%",
+      "risk_factors": [
+        "LEO orbital density multiplier",
+        "Uncontrolled space debris element",
+        "Polar orbital intersection node"
+      ],
+      "risk": {"level": "LOW", "color": "#00f0ff"}
     }
   ],
-  "count": 1,
+  "count": 2985,
   "threshold_km": 200.0,
-  "timestamp": "2024-01-15T12:00:00+00:00"
+  "timestamp": "2026-10-15T13:01:16.158050+00:00"
 }
 ```
+
+Trimmed. Values change every cycle.
 
 ---
 
@@ -198,21 +229,23 @@ GET /api/stats
 
 ```json
 {
-  "total_satellites": 2001,
-  "active_conjunctions": 3,
+  "total_satellites": 1959,
+  "active_conjunctions": 2985,
   "conjunction_threshold_km": 500.0,
-  "avg_altitude_km": 732.4,
-  "min_altitude_km": 184.2,
-  "max_speed_kms": 7.92,
+  "avg_altitude_km": 10417.15,
+  "min_altitude_km": 15.02,
+  "max_speed_kms": 8.1083,
   "orbit_distribution": {
-    "Low Earth Orbit (LEO)": 1834,
-    "Medium Earth Orbit (MEO)": 52,
-    "Geostationary Orbit (GEO)": 78,
-    "High Earth / Elliptical Orbit (HEO)": 37
+    "Low Earth Orbit (LEO)": 1352,
+    "Medium Earth Orbit (MEO)": 150,
+    "Geostationary Orbit (GEO)": 441,
+    "High Earth / Elliptical Orbit (HEO)": 16
   },
-  "timestamp": "2024-01-15T12:00:00+00:00"
+  "timestamp": "2026-10-15T13:01:16.158050+00:00"
 }
 ```
+
+Trimmed. Values change every cycle.
 
 ---
 
@@ -238,21 +271,38 @@ GET /api/ground-visibility
       "longitude": -106.6086,
       "altitude_km": 1.2,
       "min_elevation_deg": 10.0
+    },
+    {
+      "id": "goldstone",
+      "name": "Goldstone DSN",
+      "latitude": 35.4267,
+      "longitude": -116.89,
+      "altitude_km": 1.0,
+      "min_elevation_deg": 10.0
     }
   ],
   "visible": [
     {
-      "satellite": "ISS (ZARYA)",
+      "satellite": "CALSPHERE 1",
+      "station_id": "goldstone",
+      "station_name": "Goldstone DSN",
+      "elevation_deg": 13.47,
+      "duration_seconds": 104
+    },
+    {
+      "satellite": "LCS 1",
       "station_id": "white_sands",
       "station_name": "White Sands",
-      "elevation_deg": 32.5,
-      "duration_seconds": 412
+      "elevation_deg": 28.0,
+      "duration_seconds": 889
     }
   ],
-  "visible_count": 1,
-  "timestamp": "2024-01-15T12:00:00+00:00"
+  "visible_count": 698,
+  "timestamp": "2026-10-15T13:01:21.088162+00:00"
 }
 ```
+
+Trimmed. Values change every cycle.
 
 ---
 
@@ -266,21 +316,42 @@ Returns the orbital congestion density grid.
 GET /api/heatmap
 ```
 
-**Response** — shape of response depends on `heatmap.py` binning logic.
+**Response**
 
 ```json
 {
-  "cells": [...],
-  "max_density": 14,
+  "cells": [
+    {
+      "altitude_band_km": [35500, 36000],
+      "density": 50,
+      "lat": -7.5,
+      "lon": -75.0,
+      "orbit": "GEO",
+      "risk_score": 1.0,
+      "satellites": ["TDRS 7", "ASIASTAR", "TDRS 8", "UFO 11 (USA 174)", "SKYNET 5A", "ZHONGXING-9", "SES-7 (PROTOSTAR 2)", "ASIASAT 5"]
+    },
+    {
+      "altitude_band_km": [35500, 36000],
+      "density": 49,
+      "lat": -7.5,
+      "lon": -105.0,
+      "orbit": "GEO",
+      "risk_score": 0.98,
+      "satellites": ["INTELSAT 906 (IS-906)", "THURAYA-2", "ABS-4 (MOBISAT-1)", "SYRACUSE 3A", "METEOSAT-9 (MSG-2)", "THURAYA-3", "TURKSAT 3A", "WGS F2 (USA 204)"]
+    }
+  ],
+  "max_density": 50,
   "orbit_counts": {
-    "LEO": 1834,
-    "MEO": 52,
-    "GEO": 78,
-    "HEO": 37
+    "GEO": 441,
+    "HEO": 16,
+    "LEO": 1352,
+    "MEO": 150
   },
-  "timestamp": "2024-01-15T12:00:00+00:00"
+  "timestamp": "2026-10-15T13:01:21.247548+00:00"
 }
 ```
+
+Trimmed. Values change every cycle.
 
 ---
 
@@ -307,32 +378,28 @@ GET /api/debris-risk
   "clouds": [
     {
       "id": "cloud_1",
-      "source": ["ISS (ZARYA)", "TEST_DEBRIS_X"],
-      "center": {"lat": 42.71, "lon": -87.05, "altitude_km": 426.5},
+      "source": ["ISS (ZARYA)", "ISS (UNITY)"],
+      "center": {"lat": 44.4422, "lon": 169.212, "altitude_km": 423.23},
       "radius_km": 250.0,
-      "debris_count": 223,
-      "primary_probability": 0.00531,
-      "affected_satellites": [
-        {
-          "satellite": "SOME-SAT",
-          "distance_to_cloud_km": 88.3,
-          "chain_probability": 0.00142
-        }
-      ]
+      "debris_count": 80,
+      "primary_probability": 0.0,
+      "affected_satellites": []
     }
   ],
-  "event_count": 1,
-  "chain_probability_sum": 0.00142,
+  "event_count": 5,
+  "chain_probability_sum": 0.0,
   "threshold_km": 500.0,
-  "timestamp": "2024-01-15T12:00:00+00:00"
+  "timestamp": "2026-10-15T13:01:21.418719+00:00"
 }
 ```
+
+Trimmed. Values change every cycle.
 
 ---
 
 ### `GET /api/maneuvers`
 
-Returns maneuver predictions for tracked objects.
+Returns configured ISS/Hubble maneuver scenario inputs and lightweight trajectory previews that fall within the 30-day horizon. The response can contain no maneuvers.
 
 **Request**
 
@@ -340,13 +407,24 @@ Returns maneuver predictions for tracked objects.
 GET /api/maneuvers
 ```
 
-**Response** — array of maneuver prediction objects (shape defined by `maneuvers.py`).
+**Response**
+
+```json
+{
+  "count": 0,
+  "horizon_days": 30,
+  "maneuvers": [],
+  "timestamp": "2026-10-15T13:01:21.447457+00:00"
+}
+```
+
+Trimmed. Values change every cycle. This live response contained no in-horizon maneuver scenarios.
 
 ---
 
 ### `GET /api/launches`
 
-Returns upcoming launches from Launch Library 2, with a local fallback cache.
+Returns upcoming launches from Launch Library 2. Successful responses are cached locally for 30 minutes; a static fallback entry is used if fetching fails.
 
 **Query parameters**
 
@@ -357,10 +435,39 @@ Returns upcoming launches from Launch Library 2, with a local fallback cache.
 **Request**
 
 ```
-GET /api/launches?limit=3
+GET /api/launches?limit=2
 ```
 
-**Response** — array of launch objects (shape defined by `launches.py`).
+**Response**
+
+```json
+{
+  "count": 2,
+  "launches": [
+    {
+      "name": "Falcon 9 Block 5 | USSF-481",
+      "net": "2026-10-15T23:57:05Z",
+      "status": "Go for Launch",
+      "mission_name": "USSF-481",
+      "rocket": "Falcon 9 Block 5",
+      "orbit": "PO",
+      "location": "Vandenberg SFB, CA, USA"
+    },
+    {
+      "name": "Falcon 9 Block 5 | Bandwagon 5 (Dedicated Mid-Inclination Rideshare)",
+      "net": "2026-10-19T10:30:00Z",
+      "status": "Go for Launch",
+      "mission_name": "Bandwagon 5 (Dedicated Mid-Inclination Rideshare)",
+      "rocket": "Falcon 9 Block 5",
+      "orbit": "LEO",
+      "location": "Cape Canaveral SFS, FL, USA"
+    }
+  ],
+  "source": "launch_library_2"
+}
+```
+
+Trimmed. Values change every cycle.
 
 ---
 
@@ -385,7 +492,7 @@ Returns a time series of propagated state vectors for one satellite.
 **Request**
 
 ```
-GET /api/v1/ephemeris/25544?start=2024-01-15T12:00:00Z&end=2024-01-15T13:00:00Z&step_sec=60
+GET /api/v1/ephemeris/25544?start=2026-10-15T12:00:00Z&end=2026-10-15T12:02:00Z&step_sec=60
 ```
 
 **Response** — array of state dicts
@@ -393,14 +500,23 @@ GET /api/v1/ephemeris/25544?start=2024-01-15T12:00:00Z&end=2024-01-15T13:00:00Z&
 ```json
 [
   {
-    "latitude": 42.31,
-    "longitude": -87.45,
-    "altitude_km": 421.5,
-    "speed_kms": 7.66,
-    "timestamp": "2024-01-15T12:00:00+00:00"
+    "latitude": -42.59476030371685,
+    "longitude": -93.62014853189316,
+    "altitude_km": 425.1200663762356,
+    "speed_kms": 7.658116180666227,
+    "timestamp": "2026-10-15T12:00:00+00:00"
+  },
+  {
+    "latitude": -44.603505736116546,
+    "longitude": -89.05637501571914,
+    "altitude_km": 425.76562505831043,
+    "speed_kms": 7.657848163228265,
+    "timestamp": "2026-10-15T12:01:00+00:00"
   }
 ]
 ```
+
+Trimmed. Values change every cycle.
 
 ---
 
@@ -408,34 +524,59 @@ GET /api/v1/ephemeris/25544?start=2024-01-15T12:00:00Z&end=2024-01-15T13:00:00Z&
 
 Returns the latest conjunction involving a given satellite (from the most recent background screening cycle).
 
-**Response — no active conjunction**
+**Response — active conjunction found**
 
 ```json
 {
-  "status": "nominal",
-  "message": "No active conjunctions detected"
+  "sat1": "ISS (ZARYA)",
+  "sat2": "ISS (UNITY)",
+  "obj1": "ISS (ZARYA)",
+  "obj2": "ISS (UNITY)",
+  "distance_km": 0.0,
+  "probability": 0.010790294709353956,
+  "probability_pct": "1.079%",
+  "risk": {"level": "CRITICAL", "color": "#ff3b30"},
+  "risk_factors": [
+    "Ultra-close proximity encounter (<10km)",
+    "LEO orbital density multiplier",
+    "Active coordinated payloads"
+  ]
 }
 ```
 
-**Response — active conjunction found** — same shape as a single conjunction in `/api/conjunctions`.
+Trimmed. Values change every cycle.
 
 ---
 
 ## Authentication endpoints (v1 only)
 
-These endpoints are under `/api/v1/`. They require a JSON body. Protected endpoints require the header `Authorization: Bearer <token>`.
+These endpoints are under `/api/v1/`. Protected routes accept JSON bodies where required. Send the JWT in the header `Authorization: Bearer <token>`. The following responses were captured with a throwaway local test account; JWT values are redacted.
 
 ### `POST /api/v1/auth/signup`
 
 ```json
 {
-  "email": "user@example.com",
-  "password": "secret",
-  "display_name": "Alice"
+  "email": "doc-accuracy-2150474f09e94c3487477d43f3cfd0fe@example.invalid",
+  "password": "<redacted throwaway password>",
+  "display_name": "Docs test"
 }
 ```
 
 Returns `{ "user": {...}, "token": "<jwt>" }` with HTTP 201.
+
+```json
+{
+  "user": {
+    "id": 4,
+    "email": "doc-accuracy-2150474f09e94c3487477d43f3cfd0fe@example.invalid",
+    "display_name": "Docs test",
+    "role": "user",
+    "created_at": "2026-10-15T13:04:24.340733+00:00",
+    "updated_at": "2026-10-15T13:04:24.340733+00:00"
+  },
+  "token": "<redacted>"
+}
+```
 
 ---
 
@@ -443,18 +584,37 @@ Returns `{ "user": {...}, "token": "<jwt>" }` with HTTP 201.
 
 ```json
 {
-  "email": "user@example.com",
-  "password": "secret"
+  "email": "doc-accuracy-2150474f09e94c3487477d43f3cfd0fe@example.invalid",
+  "password": "<redacted throwaway password>"
 }
 ```
 
 Returns `{ "user": {...}, "token": "<jwt>", "expires_in": 28800 }`.
 
+```json
+{
+  "user": {
+    "id": 4,
+    "email": "doc-accuracy-2150474f09e94c3487477d43f3cfd0fe@example.invalid",
+    "display_name": "Docs test",
+    "role": "user",
+    "created_at": "2026-10-15T13:04:24.340733+00:00",
+    "updated_at": "2026-10-15T13:04:24.340733+00:00"
+  },
+  "token": "<redacted>",
+  "expires_in": 28800
+}
+```
+
 ---
 
 ### `POST /api/v1/auth/logout`
 
-Requires auth. Returns `{ "ok": true }`. Discard the token client-side.
+Requires auth. Returns `{ "ok": true, "message": "discard bearer token client-side" }`. Discard the token client-side.
+
+```json
+{"ok": true, "message": "discard bearer token client-side"}
+```
 
 ---
 
@@ -462,6 +622,18 @@ Requires auth. Returns `{ "ok": true }`. Discard the token client-side.
 
 Requires auth. Returns `{ "user": {...} }`.
 
+```json
+{
+  "user": {
+    "id": 4,
+    "email": "doc-accuracy-2150474f09e94c3487477d43f3cfd0fe@example.invalid",
+    "display_name": "Docs test",
+    "role": "user",
+    "created_at": "2026-10-15T13:04:24.340733+00:00",
+    "updated_at": "2026-10-15T13:04:24.340733+00:00"
+  }
+}
+```
 ---
 
 ### `PATCH /api/v1/profile`
@@ -469,7 +641,20 @@ Requires auth. Returns `{ "user": {...} }`.
 Requires auth. Updates display name.
 
 ```json
-{ "display_name": "Bob" }
+{ "display_name": "Docs Test User" }
+```
+
+```json
+{
+  "user": {
+    "id": 4,
+    "email": "doc-accuracy-2150474f09e94c3487477d43f3cfd0fe@example.invalid",
+    "display_name": "Docs Test User",
+    "role": "user",
+    "created_at": "2026-10-15T13:04:24.340733+00:00",
+    "updated_at": "2026-10-15T13:05:35.052356+00:00"
+  }
+}
 ```
 
 ---
@@ -478,12 +663,42 @@ Requires auth. Updates display name.
 
 Requires auth. Returns the user's stored preferences object.
 
+```json
+{
+  "preferences": {
+    "default_orbit_filter": "ALL",
+    "show_debris_clouds": true,
+    "show_ground_visibility": true,
+    "show_heatmap": true,
+    "theme": "dark"
+  },
+  "watched_satellites": [],
+  "alert_threshold_km": 50.0,
+  "email_alerts_enabled": false,
+  "webhook_url": null
+}
+```
 ---
 
 ### `PUT /api/v1/preferences`
 
 Requires auth. Replaces the preferences object.
 
+```json
+{
+  "preferences": {
+    "default_orbit_filter": "ALL",
+    "show_debris_clouds": true,
+    "show_ground_visibility": true,
+    "show_heatmap": true,
+    "theme": "dark"
+  },
+  "watched_satellites": [],
+  "alert_threshold_km": 75.0,
+  "email_alerts_enabled": false,
+  "webhook_url": null
+}
+```
 ---
 
 ### `POST /api/v1/watched-satellites`
@@ -494,12 +709,42 @@ Requires auth. Adds a satellite to the user's watchlist.
 { "satellite_name": "ISS (ZARYA)" }
 ```
 
+```json
+{
+  "preferences": {
+    "default_orbit_filter": "ALL",
+    "show_debris_clouds": true,
+    "show_ground_visibility": true,
+    "show_heatmap": true,
+    "theme": "dark"
+  },
+  "watched_satellites": ["ISS (ZARYA)"],
+  "alert_threshold_km": 75.0,
+  "email_alerts_enabled": false,
+  "webhook_url": null
+}
+```
 ---
 
 ### `DELETE /api/v1/watched-satellites/<name>`
 
 Requires auth. Removes a satellite from the watchlist.
 
+```json
+{
+  "preferences": {
+    "default_orbit_filter": "ALL",
+    "show_debris_clouds": true,
+    "show_ground_visibility": true,
+    "show_heatmap": true,
+    "theme": "dark"
+  },
+  "watched_satellites": [],
+  "alert_threshold_km": 75.0,
+  "email_alerts_enabled": false,
+  "webhook_url": null
+}
+```
 ---
 
 ## OpenAPI / Swagger UI

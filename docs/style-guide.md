@@ -8,7 +8,7 @@ This guide covers writing conventions for the SpaceRisk Radar documentation. Fol
 
 - Use **"you"** to address the reader. Not "the user" or "users".
 - Write short sentences. One idea per sentence.
-- Use active voice. *"The server propagates 2000 objects"* not *"2000 objects are propagated by the server"*.
+- Use active voice. *"The server propagates up to 2,000 objects per cycle"* not *"objects are propagated by the server"*.
 - Define every technical term the first time it appears on a page, or link to [Concepts](concepts.md).
 - Be specific. Say *"the backend clamps threshold values to 10–5000 km"* not *"the threshold has limits"*.
 - Prefer plain English over jargon. *"close approach"* instead of *"conjunction event"* in user-facing text (but keep the precise term in technical pages).

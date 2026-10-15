@@ -28,7 +28,7 @@ SGP4 accounts for:
 
 SpaceRisk Radar uses the [`python-sgp4`](https://pypi.org/project/sgp4/) library, which is a Python wrapper around the canonical C implementation.
 
-**Analogy:** SGP4 is like a physics engine in a video game — a simplified model of reality that is accurate enough for planning but not for precision navigation. A real spacecraft uses onboard sensors and GPS for millimetre-level accuracy; SGP4 works from a two-day-old snapshot.
+**Analogy:** SGP4 is like a physics engine in a video game — a simplified model of reality, not precision navigation. The age of the TLE affects how representative its elements remain, and SpaceRisk Radar does not calculate a position-error bound from that age.
 
 **Reference:** Vallado, D.A., Crawford, P., Hujsak, R., Kelso, T.S. (2006). *Revisiting Spacetrack Report #3*. AIAA 2006-6753.
 
@@ -36,7 +36,7 @@ SpaceRisk Radar uses the [`python-sgp4`](https://pypi.org/project/sgp4/) library
 
 ## Conjunction
 
-A **conjunction** occurs when two space objects come within a defined distance of each other. SpaceRisk Radar detects conjunctions by computing the 3D distance between every pair of tracked objects and flagging any pair closer than the *screening threshold* (default: 500 km).
+A **conjunction** occurs when two space objects come within a defined distance of each other. SpaceRisk Radar detects conjunctions by computing the 3D distance between pairs of propagated objects (up to 2,000 catalog TLEs per cycle) and flagging any pair closer than the *screening threshold* (default: 500 km).
 
 The 3D distance is computed using the Haversine formula for the great-circle surface distance, then extended with the Pythagorean theorem to include the altitude difference. This gives the straight-line distance through space between the two objects at the moment they are propagated.
 
@@ -44,7 +44,7 @@ A conjunction is **not** the same as a collision. Most conjunctions involve two 
 
 **Analogy:** Imagine two cars on a motorway whose GPS dots appear close on a map. They might be on different lanes, travelling in the same direction at similar speed, or crossing at an interchange — the map view alone does not tell you the risk. A conjunction is the same: two dots that look close at one snapshot in time.
 
-**Reference:** NASA Conjunction Assessment Risk Analysis (CARA). [https://www.nasa.gov/conjunction-assessment-risk-analysis/](https://www.nasa.gov/conjunction-assessment-risk-analysis/)
+**Reference:** NASA Conjunction Assessment Risk Analysis (CARA). [https://www.nasa.gov/cara/](https://www.nasa.gov/cara/)
 
 ---
 
@@ -60,7 +60,7 @@ Here is how it works, directly from `backend/risk_engine.py`:
 
 3. **Velocity adjustment** — `speed_adj = 0.05 × (average_speed − 7.0)`. Faster objects get a slightly higher score.
 
-4. **Debris adjustment** — If either object is classified as debris (detected by name or operator string matching), add +0.6 (debris cannot manoeuvre). If both are active payloads, subtract −0.3 (they can coordinate an avoidance manoeuvre).
+4. **Debris adjustment** — If either object's name, operator, or country value contains "debris", add +0.6. If neither is detected that way, subtract −0.3; this string-based check does not establish whether an object is active or can maneuver.
 
 5. **Inclination adjustment** — If both objects are in polar orbits (inclination 70°–110°), add +0.4 (polar orbits intersect at high relative angles and speeds).
 

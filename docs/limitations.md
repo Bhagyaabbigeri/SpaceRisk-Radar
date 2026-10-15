@@ -13,9 +13,9 @@ A TLE is a snapshot of an orbit at a specific moment (the epoch). Satellite posi
 - **Third-body gravitational effects** from the Moon and Sun (mainly for GEO and HEO).
 - **Orbital manoeuvres** — if the satellite thrusts after the TLE epoch, the TLE is immediately outdated.
 
-As a rough guide, a TLE published today for an average LEO object is accurate to within a few kilometres for the first day, tens of kilometres after 2–3 days, and should be treated as illustrative beyond a week.
+Position error increases as the TLE epoch gets older, but SpaceRisk Radar does not calculate or report an error bound based on TLE age. Treat propagated positions as illustrative when the epoch is stale; inspect `tle_epoch` in the API response.
 
-SpaceRisk Radar caches TLEs for 2 hours before re-fetching. Each object's `tle_epoch` field in the API response tells you exactly how old the element set is.
+The background worker checks the TLE catalog every 10 minutes. A network fetch is normally attempted when the healthy cache is older than 2 hours; a missing or unhealthy cache also triggers an attempt. Each object's `tle_epoch` field in the API response indicates the element-set epoch.
 
 ---
 
@@ -39,8 +39,21 @@ The collision probability shown in SpaceRisk Radar is a **heuristic score**, not
 Specifically:
 
 - It is derived from the formula `probability = 10^(base_score + adjustments)` where `base_score = -2.0 - 0.08 × distance_km`.
-- It does not use a covariance matrix for either object. Operational Pc calculations require covariance data (uncertainty ellipsoids in position and velocity) which is not publicly available for most objects.
+- It does not use a covariance matrix for either object. Operational Pc calculations use position-uncertainty data that this application does not calculate or load.
 - The adjustments for orbit type, velocity, debris status, and inclination are engineering judgment values, not fits to historical collision data.
+
+### Worked examples
+
+For these examples, both objects are non-debris LEO objects with `speed_kms = 7.5`, `inclination = 51.6`, and non-debris operator/country values. The LEO, speed, and coordinated-payload adjustments are therefore +0.3, +0.025, and −0.3; the score is clamped to the range −8 to −1 before exponentiation.
+
+| Distance (km) | Probability | Level |
+|---:|---:|---|
+| 5 | 0.004216965 | CRITICAL |
+| 10 | 0.001678804 | CRITICAL |
+| 50 | 0.000001059254 | MEDIUM |
+| 100 | 0.00000001 | LOW |
+| 142 | 0.00000001 | LOW |
+| 500 | 0.00000001 | LOW |
 
 **Use these numbers to rank conjunctions by relative severity, not to make operational manoeuvre decisions.**
 
@@ -53,7 +66,7 @@ The risk level labels map to probability thresholds as follows:
 | MEDIUM | probability ≥ 0.000001 (0.0001 %) |
 | LOW | probability < 0.000001 |
 
-These thresholds are illustrative. Operational agencies such as NASA use their own tiered thresholds based on Pc values derived from covariance-propagated screening volumes.
+These are application-specific thresholds, not operational decision thresholds.
 
 ---
 
@@ -81,7 +94,7 @@ The output is useful for understanding *which* conjunctions could have the large
 
 ## Simulated vs. real debris
 
-SpaceRisk Radar fetches TLEs from CelesTrak's catalog, which includes both active satellites and cataloged debris objects. However, to guarantee at least one conjunction in the live view, the app always injects a **synthetic test object** called `TEST_DEBRIS_X` near the first object in the catalog. This object is not a real satellite or debris fragment — it is a placeholder for testing the risk display.
+SpaceRisk Radar parses the catalog feed without filtering TLEs by object type before selecting the first 2,000 entries to propagate. Since catalog feeds can contain real debris and rocket bodies, these can appear in that prefix if present in the feed and ordering. Separately, when at least one catalog object propagates, the app appends a **synthetic test object** called `TEST_DEBRIS_X` near the first successfully propagated object. This object is not real debris; it is used to exercise the risk display.
 
 You can identify it in the API by the field `"operator": "Simulated"`.
 

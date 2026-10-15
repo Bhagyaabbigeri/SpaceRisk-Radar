@@ -64,7 +64,7 @@ INFO  Alert monitoring scheduler spawned.
 
 The server does three things at startup:
 
-1. Loads TLE data from the local cache (`backend/tle_cache.txt`). If the cache is missing or older than 2 hours, it fetches fresh data from CelesTrak.
+1. Loads TLE data from the local cache (`backend/tle_cache.txt`). If the cache is missing, has fewer than 100 objects, or is more than 2 hours old, it attempts to fetch data from CelesTrak.
 2. Starts a background thread that re-fetches TLEs every 10 minutes.
 3. Starts a background thread that propagates satellite positions and pushes them to connected browsers every 3 seconds over WebSocket.
 
@@ -90,5 +90,5 @@ If the globe is empty after 30 seconds, open the browser console (`F12 → Conso
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `ModuleNotFoundError: No module named 'flask'` | Virtual environment not activated | Run `.venv\Scripts\activate` (Windows) or `source .venv/bin/activate` |
-| `Address already in use: 5000` | Another process is using port 5000 | `kill $(lsof -ti:5000)` or restart your machine |
+| `Address already in use: 5000` | Another process is using port 5000 | macOS/Linux: `kill $(lsof -ti:5000)`. Windows: run `netstat -ano \| findstr :5000`, then `taskkill /PID <pid> /F` using the PID shown for the listener. |
 | Globe loads but stays empty | CelesTrak fetch failed | Check your internet connection; the app will retry on the next 10-minute cycle |
