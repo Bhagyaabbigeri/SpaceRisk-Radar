@@ -1,9 +1,9 @@
-p align="center">
+<p align="center">
   <img src="frontend/SpaceRisk_Radar_live_Dashboard.png" alt="SpaceRisk Radar Dashboard" width="900"/>
 </p>
 
 <h1 align="center">🛰️ SpaceRisk Radar</h1>
-<h3 align="center">AI-Powered Orbital Collision Prediction & Space Debris Monitoring Platform</h3>
+<h3 align="center">Orbital Collision-Risk Screening & Visualization Platform</h3>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
@@ -14,7 +14,7 @@ p align="center">
 </p>
 
 <p align="center">
-  A real-time space situational awareness platform that propagates satellite orbits using SGP4/SDP4 algorithms, detects conjunction threats, simulates Kessler syndrome cascading debris risks, and visualizes the entire orbital environment on an interactive 3D globe.
+  A real-time space situational awareness platform that propagates satellite orbits using SGP4/SDP4 algorithms, screens for conjunction threats, estimates illustrative Kessler syndrome debris risks, and visualizes the orbital environment on an interactive 3D globe.
 </p>
 
 <p align="center">
@@ -37,7 +37,7 @@ SpaceRisk Radar runs locally. Follow the [Getting Started](docs/getting-started.
 - [Running the Application](#-running-the-application)
 - [API Endpoints](#-api-endpoints)
 - [Data Sources](#-data-sources)
-- [Orbital Collision Prediction Module](#-orbital-collision-prediction-module)
+- [Orbital Collision-Risk Screening Module](#-orbital-collision-risk-screening-module)
 - [Kessler Syndrome Risk Analysis](#-kessler-syndrome-risk-analysis)
 - [Ground Station Visibility Analysis](#-ground-station-visibility-analysis)
 - [Orbital Heatmap Visualization](#-orbital-heatmap-visualization)
@@ -46,6 +46,7 @@ SpaceRisk Radar runs locally. Follow the [Getting Started](docs/getting-started.
 - [Future Enhancements](#-future-enhancements)
 - [Research & Scientific Background](#-research--scientific-background)
 - [Performance & Scalability](#-performance--scalability)
+- [Limitations](#-limitations)
 - [Contributing Guidelines](#-contributing-guidelines)
 - [License](#-license)
 - [Author](#-author)
@@ -54,9 +55,9 @@ SpaceRisk Radar runs locally. Follow the [Getting Started](docs/getting-started.
 
 ## 🌍 Project Overview
 
-**SpaceRisk Radar** is a comprehensive space situational awareness (SSA) platform designed to monitor, predict, and visualize orbital collision risks in real time. The platform ingests live Two-Line Element (TLE) data from CelesTrak, propagates satellite positions using the SGP4/SDP4 orbital mechanics model, and performs proximity screening to identify potential conjunction events between space objects.
+**SpaceRisk Radar** is a comprehensive space situational awareness (SSA) platform designed to monitor, screen for, and visualize orbital conjunction risks in real time. The platform ingests Two-Line Element (TLE) data from CelesTrak, propagates satellite positions using the SGP4/SDP4 orbital mechanics model, and performs proximity screening to identify potential conjunction events between space objects.
 
-The system features a cinematic **3D globe visualization** built with Three.js that renders satellite positions, orbital trajectories, conjunction threat lines, ground station visibility cones, orbital congestion heatmaps, and Kessler syndrome debris cloud simulations — all updated in real time via WebSocket connections.
+The system features a cinematic **3D globe visualization** built with Three.js that renders satellite positions, orbital trajectories, conjunction threat lines, ground station markers, orbital congestion heatmaps, and illustrative debris-cloud estimates — all updated in real time via WebSocket connections.
 
 ---
 
@@ -77,19 +78,19 @@ With over **10,000+ active satellites** and **36,000+ tracked debris objects** o
 
 | Feature | Description |
 |---|---|
-| 🌐 **3D Globe Visualization** | Interactive Three.js globe rendering 2000+ satellites in real time with orbital trajectories |
-| ⚠️ **Conjunction Detection** | Automated proximity screening with configurable threshold (10–2000 km) |
+| 🌐 **3D Globe Visualization** | Interactive Three.js globe rendering up to 2,000 TLE objects per live cycle with orbital trajectories |
+| ⚠️ **Conjunction Detection** | Automated proximity screening with configurable threshold (10–5000 km) |
 | 🔴 **Multi-Tier Risk Assessment** | CRITICAL / HIGH / MEDIUM / LOW threat classification with collision probability |
-| 💥 **Kessler Syndrome Simulation** | Monte Carlo debris cascade modeling with chain-reaction probability analysis |
-| 📡 **Ground Station Visibility** | Line-of-sight analysis for 12 global ground stations with elevation masking |
+| 💥 **Kessler Syndrome Simulation** | Deterministic formula-based debris estimate with chain-probability analysis |
+| 📡 **Ground Station Visibility** | Line-of-sight analysis for 5 stations: White Sands (USA), Goldstone DSN (USA), Madrid DSN (Spain), Canberra DSN (Australia), and Sriharikota (India) |
 | 🗺️ **Orbital Heatmap** | Congestion density visualization binned by lat/lon grid cells |
-| 🚀 **Launch Tracking** | Upcoming launch schedule from Launch Library 2 API with countdown timers |
+| 🚀 **Launch Tracking** | Upcoming launch schedule from Launch Library 2 API with countdown values |
 | 🔄 **Real-Time Updates** | Socket.IO WebSocket push every 3 seconds for live telemetry |
-| 🔍 **Satellite Search** | Fuzzy search across the full TLE catalog with auto-complete results |
+| 🔍 **Satellite Search** | Normalized substring search across the TLE catalog with auto-complete results |
 | ⭐ **Favorites & Watchlist** | Bookmark satellites for quick access with persistent local storage |
 | 🔐 **User Authentication** | JWT-based auth with SQLite user profiles, preferences, and alert settings |
-| 📊 **Maneuver Predictions** | Drag-based orbit decay and station-keeping maneuver forecasting |
-| ⏱️ **Historical Playback** | Time-slider to propagate orbits at any past/future epoch |
+| 📊 **Maneuver Predictions** | ISS/Hubble scenario inputs with lightweight trajectory previews |
+| ⏱️ **Historical Playback** | Time-slider to propagate orbits over a 24-hour lookback window |
 | 📱 **Responsive Design** | Glassmorphism HUD interface optimized for desktop and tablet |
 
 ---
@@ -246,31 +247,27 @@ The Three.js library is loaded from a CDN in `index.html`. Socket.IO and Ionicon
 
 ## ▶️ Running the Application
 
-### Step 1: Start the Backend Server
+### Step 1: Start the Application
 
 ```bash
 # From the project root directory
 python backend/app.py
 ```
 
-The backend API server starts on **`http://localhost:5000`** with:
+The Flask app serves the frontend and starts the backend services with:
 - REST API endpoints for satellite data, conjunctions, and stats
 - Socket.IO WebSocket server for real-time push updates
 - Background threads for TLE refresh (every 10 minutes) and live object emission (every 3 seconds)
 
-### Step 2: Start the Frontend Server
+### Step 2: Frontend Serving
 
-```bash
-# From the frontend directory
-cd frontend
-python -m http.server 8000
-```
+The Flask app serves the frontend directly; no separate frontend server is required.
 
 ### Step 3: Open the Dashboard
 
-Navigate to **`http://localhost:8000`** in your browser.
+Navigate to **`http://localhost:5000`** in your browser.
 
-> **Note:** The backend must be running on port 5000 for live data. The frontend automatically connects to `http://localhost:5000` for API calls and WebSocket streams.
+> **Note:** Port 5000 serves the frontend, API, and Socket.IO streams from Flask. No separate frontend server or port 8000 is used.
 
 ---
 
@@ -283,10 +280,10 @@ Navigate to **`http://localhost:8000`** in your browser.
 | `GET` | `/api/objects` | Propagated satellite positions (lat, lon, alt, speed) |
 | `GET` | `/api/objects?at=<ISO-8601>` | Historical/future orbit propagation at specific time |
 | `GET` | `/api/satellite?name=<name>` | Detailed telemetry for a single satellite |
-| `GET` | `/api/search?q=<query>` | Fuzzy search across the TLE catalog (max 10 results) |
+| `GET` | `/api/search?q=<query>` | Normalized substring search across the TLE catalog (max 10 results) |
 | `GET` | `/api/conjunctions` | Active conjunction threat list with risk levels |
 | `GET` | `/api/conjunctions?threshold=<km>` | Custom proximity threshold (default: 500 km) |
-| `GET` | `/api/stats` | Global orbital environment statistics |
+| `GET` | `/api/stats` | Statistics for the propagated object set |
 
 ### Advanced Analysis Endpoints
 
@@ -295,17 +292,22 @@ Navigate to **`http://localhost:8000`** in your browser.
 | `GET` | `/api/ground-visibility` | Ground station line-of-sight visibility data |
 | `GET` | `/api/heatmap` | Orbital congestion density grid |
 | `GET` | `/api/debris-risk` | Kessler syndrome cascade simulation results |
-| `GET` | `/api/maneuvers` | Maneuver prediction and orbit decay forecasts |
+| `GET` | `/api/maneuvers` | ISS/Hubble maneuver scenario inputs and trajectory previews |
 | `GET` | `/api/launches` | Upcoming launch schedule (from Launch Library 2) |
 
 ### Authentication Endpoints
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/api/auth/register` | Create new user account |
-| `POST` | `/api/auth/login` | Authenticate and receive JWT token |
-| `GET` | `/api/auth/profile` | Get current user profile (requires auth) |
-| `PUT` | `/api/auth/preferences` | Update user preferences and watchlist |
+| `POST` | `/api/v1/auth/signup` | Create new user account |
+| `POST` | `/api/v1/auth/login` | Authenticate and receive JWT token |
+| `POST` | `/api/v1/auth/logout` | Log out (discard bearer token client-side; requires auth) |
+| `GET` | `/api/v1/auth/me` | Get current user (requires auth) |
+| `PATCH` | `/api/v1/profile` | Update user profile (requires auth) |
+| `GET` | `/api/v1/preferences` | Get user preferences (requires auth) |
+| `PUT` | `/api/v1/preferences` | Update user preferences and alert settings (requires auth) |
+| `POST` | `/api/v1/watched-satellites` | Add a watched satellite (requires auth) |
+| `DELETE` | `/api/v1/watched-satellites/<path:name>` | Remove a watched satellite (requires auth) |
 
 ### WebSocket Events
 
@@ -313,7 +315,7 @@ Navigate to **`http://localhost:8000`** in your browser.
 |---|---|---|
 | `objects` | Server → Client | Live satellite positions (every 3s) |
 | `conjunctions` | Server → Client | Real-time conjunction alerts |
-| `stats` | Server → Client | Environment statistics updates |
+| `stats` | Server → Client | Statistics for the propagated object set |
 | `ground_visibility` | Server → Client | Ground station visibility data |
 | `heatmap` | Server → Client | Orbital congestion heatmap |
 | `debris_risk` | Server → Client | Kessler cascade risk updates |
@@ -328,78 +330,75 @@ Navigate to **`http://localhost:8000`** in your browser.
 
 SpaceRisk Radar fetches satellite orbital elements from **[CelesTrak](https://celestrak.org/)**, maintained by Dr. T.S. Kelso. TLE data includes:
 
-- **Active satellite catalog** (~10,000+ objects)
+- CelesTrak TLE catalog (object count varies)
 - Keplerian orbital elements: inclination, RAAN, eccentricity, argument of perigee, mean anomaly, mean motion
 - NORAD catalog numbers for cross-referencing with Space-Track.org
-- Element epoch for propagation accuracy assessment
+- Element epoch included with propagated object metadata
 
-The backend implements a **2-hour local file cache** (`tle_cache.txt`) to prevent CelesTrak rate-limiting (403 bans), with background thread refresh every 10 minutes.
+The backend implements a **2-hour local file cache** (`tle_cache.txt`) to reduce repeated CelesTrak requests, with a background refresh check every 10 minutes.
 
 ### Launch Data
 
-Upcoming launch information is sourced from the **[Launch Library 2 API](https://thespacedevs.com/)** with a local JSON fallback cache (`launch_cache.json`) for offline resilience.
+Upcoming launch information is sourced from the **[Launch Library 2 API](https://thespacedevs.com/)** with a 30-minute local cache and a static placeholder fallback when the API is unavailable.
 
 ---
 
-## ⚠️ Orbital Collision Prediction Module
+## ⚠️ Orbital Collision-Risk Screening Module
 
 The conjunction screening engine (`risk_engine.py`) implements a multi-stage collision assessment pipeline:
 
 ### Stage 1: Proximity Screening
 - Computes pairwise distances between all propagated satellite positions
 - Filters pairs within the configurable screening threshold (default: 500 km)
-- Uses geodetic distance approximation for computational efficiency
+- Uses a 3D distance estimate combining surface haversine distance and altitude difference
 
 ### Stage 2: Risk Classification
-| Level | Distance | Color | Description |
+| Level | Probability threshold | Color | Description |
 |---|---|---|---|
-| **CRITICAL** | < 10 km | 🔴 Red | Immediate collision risk — maneuver required |
-| **HIGH** | 10–50 km | 🟠 Orange | Elevated risk — close monitoring recommended |
-| **MEDIUM** | 50–200 km | 🟡 Yellow | Moderate proximity — routine tracking |
-| **LOW** | 200+ km | 🔵 Blue | Standard conjunction — logged for awareness |
+| **CRITICAL** | ≥ 0.001 | 🔴 Red | Highest heuristic score — review event details |
+| **HIGH** | ≥ 0.0001 | 🟠 Orange | Elevated heuristic score — close monitoring recommended |
+| **MEDIUM** | ≥ 0.000001 | 🟡 Yellow | Moderate heuristic score — routine tracking |
+| **LOW** | < 0.000001 | 🔵 Blue | Lowest heuristic score — logged for awareness |
 
 ### Stage 3: Collision Probability
-- Probability estimation using relative velocity, miss distance, and combined covariance
-- Risk factor analysis including: closing speed, altitude band congestion, object size uncertainty
-- Evasion maneuver recommendation generation
+- Heuristic probability score using 3D distance, orbit class, average object speed, debris indicators in operator/country/name fields, and inclination
+- Risk factors are derived from proximity, orbit class, average speed, debris indicators, and polar inclinations
+- Heuristic evasion text is selected from debris flags and object names; it is not an orbit-optimized maneuver plan
 
 ---
 
 ## 💥 Kessler Syndrome Risk Analysis
 
-The Kessler module (`kessler.py`) simulates the cascading debris generation scenario first described by NASA scientist Donald J. Kessler in 1978:
+The Kessler module (`kessler.py`) estimates an illustrative cascading-debris scenario:
 
-- **Monte Carlo simulation** of debris cloud generation from each conjunction event
-- **Fragment count estimation** based on collision energy and object mass models
-- **Chain-reaction probability** calculation for secondary collisions with nearby objects
-- **Debris cloud visualization** with propagated spread patterns on the 3D globe
-- **Cumulative risk scoring** across all active conjunction threats
+- **Deterministic, formula-based estimate** of debris generation from selected conjunction events
+- **Debris-count estimate** based on miss distance
+- **Chain-probability estimate** for nearby objects within a fixed-radius cloud
+- **Debris-cloud visualization** using estimated centers and fixed-radius regions
+- **Cumulative chain-probability sum** across up to five selected conjunction events
 
-The simulation considers:
-- Relative closing velocity of conjunction pairs
-- Orbital altitude (higher orbits = longer debris lifetime)
-- Object density in the collision altitude band
-- Fragment dispersion cone modeling
+The estimate uses:
+- Miss distance to calculate primary probability and estimated debris count
+- The midpoint of conjunction-object positions as the estimated cloud center
+- Nearby object positions within a fixed radius to estimate chain probabilities
+- A fixed-radius cloud rather than fragment dispersion cone modeling
 
 ---
 
 ## 📡 Ground Station Visibility Analysis
 
-The ground station module (`ground_station.py`) computes real-time line-of-sight visibility between satellites and a network of 12 global tracking stations:
+The ground station module (`ground_station.py`) computes real-time line-of-sight visibility between satellites and five defined stations:
 
 **Included Ground Stations:**
-- Cape Canaveral (USA), Vandenberg SFB (USA), Wallops Island (USA)
-- Baikonur (Kazakhstan), Plesetsk (Russia)
-- Kourou (French Guiana), ESOC Darmstadt (Germany)
-- Tanegashima (Japan), Sriharikota (India)
-- Wenchang (China), Mahia Peninsula (New Zealand)
-- Perth (Australia)
+- White Sands (USA), Goldstone DSN (USA)
+- Madrid DSN (Spain), Canberra DSN (Australia)
+- Sriharikota (India)
 
 **Analysis Features:**
-- Elevation angle masking (minimum 5° above horizon)
-- Sub-satellite point distance calculation
-- Visibility cone rendering on the 3D globe
-- Station-to-satellite link quality estimation
+- Elevation angle masking (minimum 10° above horizon)
+- Visibility-duration approximation based on elevation and altitude
+- Ground-station markers rendered on the 3D globe
+- Best visible station selected by elevation angle
 
 ---
 
@@ -409,9 +408,9 @@ The heatmap engine (`heatmap.py`) generates an orbital congestion density map:
 
 - **Grid-based binning** of satellite positions across latitude/longitude cells
 - **Altitude band segmentation** (LEO / MEO / GEO / HEO)
-- **Density normalization** with configurable color gradient mapping
+- **Density normalization** against the highest-density cell, with risk scores used for heatmap coloring
 - **Real-time updates** as satellite positions are re-propagated
-- Identification of **high-congestion orbital shells** (e.g., 800 km Sun-synchronous band)
+- Identification of **high-density grid cells** ranked by satellite count
 
 ---
 
@@ -420,10 +419,10 @@ The heatmap engine (`heatmap.py`) generates an orbital congestion density map:
 The launch tracker (`launches.py`) provides visibility into the near-term launch manifest:
 
 - **Live data** from Launch Library 2 API (thespacedevs.com)
-- **Launch countdown timers** displayed on the HUD interface
-- **Launch provider and vehicle identification** (SpaceX, Roscosmos, ISRO, etc.)
+- **Launch countdown values** displayed on the HUD interface
+- **Launch mission and vehicle identification**
 - **Pad location mapping** with geographic coordinates
-- **Offline fallback** using cached launch data for resilience
+- **Static placeholder fallback** when Launch Library 2 is unavailable
 
 ---
 
@@ -503,7 +502,7 @@ The launch tracker (`launches.py`) provides visibility into the near-term launch
 - [ ] **Mobile PWA** — Progressive web app for mobile field deployment
 - [ ] **Docker Containerization** — One-command deployment with Docker Compose
 - [ ] **PostgreSQL Migration** — Production-grade database for user management
-- [ ] **Email/SMS Alert Integration** — Automated conjunction alert notifications
+- [ ] **SMS and additional alert integrations** — Automated conjunction alert notifications
 - [ ] **TLE Accuracy Decay Monitoring** — Epoch freshness tracking and prediction confidence scoring
 
 ---
@@ -538,21 +537,34 @@ The cascading collision model is inspired by:
 
 | Metric | Value |
 |---|---|
-| **Catalog Size** | Up to 2,000 simultaneously propagated objects |
+| **Catalog Size** | Up to 2,000 TLE catalog objects per live cycle |
 | **Update Frequency** | 3-second Socket.IO push cycle |
-| **TLE Refresh** | Every 10 minutes (2-hour file cache for rate limiting) |
+| **TLE Refresh Check** | Every 10 minutes (2-hour file cache) |
 | **API Response Time** | < 500ms for cached endpoints |
-| **Cache TTL** | 10–60 seconds (endpoint-dependent) |
-| **WebSocket Protocol** | Socket.IO with threading async mode |
+| **Cache TTL** | 10 seconds–30 minutes (endpoint-dependent) |
+| **WebSocket Protocol** | Socket.IO with Eventlet async mode |
 | **Browser Target** | Chrome 90+, Firefox 88+, Edge 90+ |
 | **Propagation Engine** | SGP4 via `python-sgp4` (compiled C extensions) |
 
 ### Optimization Strategies
-- **In-memory caching** with TTL-based expiration (`cache_layer.py`)
+- **Redis-backed caching with in-memory fallback** and TTL-based expiration (`cache_layer.py`)
 - **Background worker threads** for TLE refresh and Socket.IO emission
-- **Propagation limit** (configurable, default 2000 objects) to bound CPU usage
-- **Client-side filtering** to reduce data transfer over WebSocket
-- **Lazy-loaded advanced overlays** (heatmap, debris risk computed on-demand)
+- **Propagation limit** (2,000 catalog objects) to bound CPU usage
+- **Client-side filtering** to limit rendered objects
+- **Bounded advanced overlays** (heatmap, debris risk, and other analysis computed during the live worker cycle)
+
+---
+
+## ⚠️ Limitations
+
+- TLE-based propagation can become less accurate as an element set's epoch gets older; the app exposes the epoch but does not calculate age-based confidence.
+- Orbit states use SGP4 propagation rather than high-fidelity numerical integration.
+- Collision probability is a heuristic score, not an operational collision probability.
+- At most 2,000 catalog TLEs are propagated per live cycle; a separate synthetic object is then injected.
+- When catalog objects are available, the runtime injects `TEST_DEBRIS_X`; it is synthetic and is not real debris.
+- The Kessler module is an illustrative formula-based estimate, not a physical fragment simulation.
+
+For details, see [docs/limitations.md](docs/limitations.md).
 
 ---
 
