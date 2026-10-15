@@ -1,6 +1,6 @@
 # SpaceRisk Radar
 
-**SpaceRisk Radar** is a real-time space situational awareness platform. It fetches satellite orbital data from [CelesTrak](https://celestrak.org/), propagates every orbit using the SGP4 model, screens all pairs of objects for close approaches (conjunctions), and displays everything on an interactive 3D globe in your browser.
+**SpaceRisk Radar** is a real-time space situational awareness platform. It fetches satellite orbital data from [CelesTrak](https://celestrak.org/), propagates up to 2,000 catalog objects per cycle using the SGP4 model, screens pairs among those propagated objects for close approaches (conjunctions), and displays the results on an interactive 3D globe in your browser.
 
 SpaceRisk Radar runs locally. Follow the [Getting Started](getting-started.md) guide to run it on your own machine.
 
@@ -26,4 +26,3 @@ SpaceRisk Radar runs locally. Follow the [Getting Started](getting-started.md) g
 | [Style Guide](style-guide.md) | Writing conventions for contributors |
 | [Changelog](changelog.md) | Release history |
 | [Blog: What Is a Conjunction?](blog/what-is-a-conjunction.md) | A beginner-friendly explainer |
-

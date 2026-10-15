@@ -6,14 +6,14 @@ This page explains the data pipeline that runs every 3 seconds to keep the dashb
 
 ```mermaid
 graph TD
-    A[CelesTrak TLE Catalog] -->|HTTP fetch every 2 h| B[tle_fetcher.py\nCache & parse]
-    B -->|List of TLEData objects| C[orbit_calculator.py\nSGP4 propagation]
-    C -->|lat · lon · alt · speed| D[risk_engine.py\nConjunction screening]
-    C -->|propagated objects| E[ground_station.py\nVisibility analysis]
-    C -->|propagated objects| F[heatmap.py\nDensity grid]
-    D -->|conjunction list| G[kessler.py\nCascade simulation]
-    D -->|conjunction list| H[maneuvers.py\nManeuver predictions]
-    D --> I[app.py\nSocket.IO emitter]
+    A[CelesTrak TLE Catalog] -->|Checked every 10 min; fetch if cache is missing, unhealthy, or over 2 h old| B[tle_fetcher.py<br/>Cache & parse]
+    B -->|List of TLEData objects| C[orbit_calculator.py<br/>SGP4 propagation]
+    C -->|lat · lon · alt · speed| D[risk_engine.py<br/>Conjunction screening]
+    C -->|propagated objects| E[ground_station.py<br/>Visibility analysis]
+    C -->|propagated objects| F[heatmap.py<br/>Density grid]
+    D -->|conjunction list| G[kessler.py<br/>Cascade simulation]
+    D -->|conjunction list| H[maneuvers.py<br/>Maneuver predictions]
+    D --> I[app.py<br/>Socket.IO emitter]
     E --> I
     F --> I
     G --> I
@@ -33,7 +33,7 @@ graph TD
 **Cache logic:**
 
 1. If a healthy cache (≥ 100 objects) exists and is less than 2 hours old, use it directly — no network call.
-2. If the cache is stale, attempt a live fetch from `celestrak.org/pub/TLE/catalog.txt`. On success, write the cache only if the new file contains *more* objects than the existing one (prevents a small mirror response from overwriting a large catalog).
+2. If the cache is missing, has fewer than 100 objects, or is stale, attempt a live fetch from `celestrak.org/pub/TLE/catalog.txt`. On success, write the cache only if the new file contains *more* objects than the existing one (prevents a small mirror response from overwriting a large catalog).
 3. If the primary URL fails, try two fallback URLs in order: `celestrak.org/NORAD/elements/gp.php?GROUP=active` and the AMSAT mirror.
 4. If all fetches fail, serve from the stale cache. If no cache exists at all, raise an error.
 
@@ -66,9 +66,9 @@ The app propagates up to **2000 objects** per cycle (the `PROPAGATION_LIMIT` con
 1. Loop over all N×(N−1)/2 pairs.
 2. For each pair, compute the 3D distance using `haversine_3d`: first the great-circle surface distance, then add the altitude difference in quadrature.
 3. If the distance is below the threshold, call `calculate_collision_probability` to score the pair (see [Concepts — Collision Probability](concepts.md#collision-probability)).
-4. Return a list of conjunction dicts sorted by risk level.
+4. Return conjunction dictionaries for the flagged pairs. The screening loop does not sort these results by risk level.
 
-One synthetic test object, `TEST_DEBRIS_X`, is always injected near the first catalog object. This guarantees at least one conjunction in the live view regardless of the actual catalog state.
+When at least one catalog object propagates successfully, the app appends a synthetic test object named `TEST_DEBRIS_X` near the first propagated object. It is included to exercise the risk display; it is not a real catalog object.
 
 ---
 
@@ -81,7 +81,7 @@ One synthetic test object, `TEST_DEBRIS_X`, is always injected near the first ca
 1. Sort conjunctions by distance. Take the closest 5.
 2. For each: compute `primary_probability = min(0.85, 0.015 × (50 / miss_distance)^1.35)`.
 3. Place a debris cloud centre halfway between the two objects, with radius 250 km.
-4. Find all other satellites within 250 km of the cloud centre. For each, compute a chain probability proportional to the primary probability and the satellite's proximity to the cloud edge.
+4. Find all other satellites within 250 km of the cloud centre. For each, compute a chain score proportional to the primary probability and decreasing linearly with distance from the cloud centre.
 5. Return the cloud list, affected satellites, and a cumulative `chain_probability_sum`.
 
 The model is deterministic; it does not use random sampling.
@@ -102,19 +102,21 @@ The model is deterministic; it does not use random sampling.
 | `canberra` | Canberra DSN | Australia |
 | `sriharikota` | Sriharikota | India |
 
-For each satellite/station pair, the code converts both positions to ECEF, computes the range vector, then takes the dot product with the station's local vertical (up vector) to get the elevation angle. If elevation ≥ the station's minimum (10° for most stations), the satellite is marked visible.
+For each satellite/station pair, the code converts both positions to ECEF, computes the range vector, then takes the dot product with the station's local vertical (up vector) to get the elevation angle. All five stations use a 10° minimum elevation angle.
+
+The displayed pass duration is a rough estimate based on elevation and altitude, not a propagated pass prediction.
 
 ---
 
 ## Stage 6 — Heatmap (`heatmap.py`)
 
-**What it does:** Counts how many tracked objects fall into each latitude/longitude grid cell and returns the density grid for the globe overlay.
+**What it does:** Counts objects in latitude, longitude, and 500 km altitude bands, grouped by orbit category, and returns the densest cells for the globe overlay. Each cell's `risk_score` is its density divided by the highest cell density in the batch; it is a normalized display value, not a collision probability.
 
 ---
 
 ## Stage 7 — Socket.IO push (`app.py`)
 
-The `emit_objects_worker` background thread ties stages 2–6 together and pushes six event types to all connected browsers every **3 seconds**:
+The `emit_objects_worker` background thread ties stages 2–6 together and pushes seven event types to all connected browsers every **3 seconds**. Flask-SocketIO is configured with Eventlet (`async_mode='eventlet'`):
 
 | Event | Content |
 |---|---|

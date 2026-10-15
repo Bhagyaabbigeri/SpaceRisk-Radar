@@ -6,7 +6,7 @@
 
 Right now, as you read this, thousands of objects are orbiting Earth at speeds of around 7–8 km per second — roughly 25,000 km/h. Most of them never come anywhere near each other. But occasionally, two objects' paths in space bring them uncomfortably close. That close approach is what space operators call a **conjunction**.
 
-The word sounds technical, but the concept is straightforward: a conjunction is simply a moment when two space objects are near each other. "Near" is relative, of course — in everyday life, two cars 100 metres apart are very close. In space, 100 km is considered extremely close.
+The word sounds technical, but the concept is straightforward: a conjunction is a close approach between two space objects. "Close" depends on the assessment criteria. NASA's [Conjunction Assessment Risk Analysis team](https://www.nasa.gov/cara/) describes screening protected assets against catalogued objects for penetrations of defined assessment volumes; its overview does not define 100 km as a universal threshold. SpaceRisk Radar flags objects whose current 3D separation is below its configurable threshold (500 km by default), rather than predicting a future encounter.
 
 ## The motorway analogy
 
@@ -18,9 +18,9 @@ This is exactly the dilemma space operators face every day.
 
 ## What SpaceRisk Radar looks for
 
-SpaceRisk Radar fetches a catalog of satellite orbital elements from CelesTrak every couple of hours. Each set of elements — called a **TLE** (Two-Line Element set) — encodes where a satellite was at a specific moment and how its orbit is shaped. Using a mathematical model called **SGP4**, the app extrapolates where every tracked object is right now.
+SpaceRisk Radar checks its CelesTrak catalog cache every 10 minutes and normally fetches new data when a healthy cache is older than 2 hours. A missing or unhealthy cache also triggers a fetch attempt. Each set of elements — called a **TLE** (Two-Line Element set) — encodes where a satellite was at a specific moment and how its orbit is shaped. Using a mathematical model called **SGP4**, the app propagates up to 2,000 catalog objects per cycle.
 
-Then it checks every possible pair. With 2,000 objects tracked in the live view, that is roughly 2,000 × 1,999 ÷ 2 ≈ 2 million pairs per cycle. For each pair, the app computes the 3D straight-line distance between the two objects. Any pair closer than the *screening threshold* (500 km by default, but you can change it) is flagged as a conjunction.
+It then checks every pair among the propagated objects, plus the synthetic test object. With up to 2,000 catalog objects in the live view, that is roughly 2 million pairs per cycle. For each pair, the app computes the 3D distance between the two objects. Any pair closer than the *screening threshold* (500 km by default; the dashboard slider ranges from 10 to 2,000 km) is flagged as a conjunction.
 
 ## A conjunction is not a collision
 
@@ -28,13 +28,13 @@ The most important thing to understand is this: **a conjunction is a warning to 
 
 Even at 1 km separation, two objects might be travelling in exactly parallel paths at the same speed — never getting any closer. Or one might be moving away already. The distance at a single snapshot in time is a starting point for analysis, not a verdict.
 
-Operational space agencies such as NASA and ESA compute a quantity called *probability of collision* (Pc) that takes into account the uncertainty in each object's position (its "error ellipsoid"), the relative velocity, and the physical size of each object. SpaceRisk Radar uses a simplified heuristic score instead — because the full covariance data needed for a rigorous Pc calculation is not publicly available for most objects.
+Operational space agencies compute probability of collision (Pc) using uncertainty data; SpaceRisk Radar instead uses a simplified heuristic score that does not use covariance and is not an operational Pc calculation.
 
 The score in SpaceRisk Radar is useful for **ranking conjunctions by severity** and for educational exploration. It is not a substitute for operational collision avoidance analysis.
 
 ## Why it matters
 
-The 2009 collision between Iridium 33 (an active US communications satellite) and Cosmos 2251 (a defunct Russian satellite) produced more than 1,800 trackable debris fragments. That event — and the 2021 Russian ASAT test, which destroyed Cosmos 1408 and created another large debris cloud — demonstrated that a single collision can make an entire orbital band more dangerous for decades.
+The 2009 collision between Iridium 33 (an active US communications satellite) and Cosmos 2251 (a defunct Russian satellite) produced a trackable debris cloud. That event — and the 2021 Russian ASAT test, which destroyed Cosmos 1408 and created another large debris cloud — demonstrated how a collision or breakup can add debris to the orbital environment.
 
 This is the spectre of **Kessler syndrome**: a cascade where each collision generates debris that causes more collisions, which generate more debris. The concern is not imminent — the orbital environment is large — but the trend of increasing object density makes tools for conjunction monitoring more important over time.
 
@@ -43,9 +43,9 @@ This is the spectre of **Kessler syndrome**: a cascade where each collision gene
 
 ## What you can do
 
-If you want to learn more, the [NASA Conjunction Assessment](https://www.nasa.gov/conjunction-assessment-risk-analysis/) programme publishes detailed information about how operational conjunction assessment works. The [CelesTrak](https://celestrak.org/) website, the source of the data SpaceRisk Radar uses, also has extensive tutorials on reading TLEs and understanding orbital mechanics.
+If you want to learn more, NASA's [Conjunction Assessment Risk Analysis](https://www.nasa.gov/cara/) page describes its operational assessment program. The [CelesTrak](https://celestrak.org/) website, the source of the data SpaceRisk Radar uses, also has extensive tutorials on reading TLEs and understanding orbital mechanics.
 
-If you want to try it yourself, follow the [Getting Started](../getting-started.md) guide to run SpaceRisk Radar locally, then lower the screening threshold to 100 km and watch which pairs appear. The orbit replay slider lets you wind the clock forward or back and see how the picture changes — a reminder that space situational awareness is always a race against time.
+If you want to try it yourself, follow the [Getting Started](../getting-started.md) guide to run SpaceRisk Radar locally, then lower the screening threshold to 100 km and watch which pairs appear. The orbit replay slider lets you look back over the previous 24 hours and see how the picture changes.
 
 ---
 

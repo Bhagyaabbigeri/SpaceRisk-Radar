@@ -1,14 +1,14 @@
 # 🛰️ SpaceRisk Radar — Complete Interview Guide
 
-> Open `http://localhost:8000` while reading this. Point to each section on screen as you explain it. Everything below is in plain, normal English — no jargon.
+> Open `http://localhost:5000` while reading this. Point to each section on screen as you explain it. Everything below is in plain, normal English — no jargon.
 
 ---
 
 ## What Is This Project?
 
-**SpaceRisk Radar** is a real-time space collision monitoring dashboard. It watches thousands of real satellites and debris objects flying around Earth, detects when two of them are getting dangerously close, and shows everything live on an interactive 3D globe inside your browser.
+**SpaceRisk Radar** is an orbital collision-risk screening dashboard. It propagates up to 2,000 catalog objects per cycle, screens their current positions for close approaches, and shows the results on an interactive 3D globe. A synthetic test object is also added to exercise the risk display.
 
-**Why does this matter?** Right now there are over **10,000 active satellites** and **36,000+ debris fragments** orbiting Earth at around 28,000 km/h. If two objects hit each other, they create thousands of new debris pieces. Those pieces can hit other satellites, creating even more debris — a chain reaction called **Kessler Syndrome** that could make entire orbits unusable for decades. This tool helps predict and visualize those risks before they happen.
+**Why does this matter?** Close approaches are worth screening, but a single position snapshot does not predict an impact. This project visualizes conjunction screening and illustrative cascading-risk estimates for awareness and education; it is not an operational collision-avoidance system.
 
 ---
 
@@ -18,9 +18,9 @@
 **File:** `backend/app.py`
 
 This is a **Python program** that runs silently in the background. It does four things:
-- Downloads real satellite tracking data from the internet every 2 hours
-- Uses orbital physics math to calculate exactly where every satellite is *right now*
-- Checks if any two satellites are dangerously close to each other
+- Checks the TLE cache every 10 minutes and attempts a network fetch when a healthy cache is older than 2 hours
+- Uses SGP4 to propagate up to 2,000 catalog TLEs to a requested time
+- Screens pairwise 3D distances and assigns heuristic risk scores
 - Sends all this data to the browser every **3 seconds** automatically
 
 ### 2. The Frontend (Browser Dashboard)
@@ -37,7 +37,7 @@ This is everything you see in the browser. It:
 
 **Point to:** The spinning Earth with coloured dots moving across it.
 
-Every single dot on the globe is a **real satellite or debris object** that is currently in orbit. They move in real time based on actual physics calculations.
+Each dot represents a propagated catalog object, with a synthetic test object added when a catalog object propagates successfully. Positions are estimates from TLE data and SGP4, not live measurements.
 
 **You can interact with it:**
 - **Click + drag** → rotate the globe
@@ -46,24 +46,24 @@ Every single dot on the globe is a **real satellite or debris object** that is c
 - **Circular arrow button** → resets the camera back to the default view
 - **Click any dot** → selects that satellite and shows its full details in the left panel
 
-**How does it show 2,000+ objects smoothly?**
-It uses a JavaScript library called **Three.js** which talks directly to the computer's GPU (graphics card). Instead of drawing 2,000 individual objects one by one, it batches all satellite dots into **a single GPU instruction** — so the graphics card renders all of them in one pass. This is why it runs at 60 frames per second without lag.
+The live view can show up to 2,000 catalog objects per cycle. The frontend creates individual Three.js mesh objects for satellites; the project does not guarantee a particular frame rate.
 
 ### 🎨 Visual Guide: What Do The Dots, Lines & Shapes Mean?
 
 | Element | Visual | What It Represents |
 |---|---|---|
 | **Cyan Dots** | `Cyan (#00f0ff)` | **Low Earth Orbit (LEO)** satellites (< 2,000 km altitude, e.g., ISS, Starlink). |
-| **Green Dots** | `Green (#00ff88)` | **Medium / High Earth Orbit (MEO/HEO)** satellites or general debris objects. |
+| **Green Dots** | `Green (#00ff88)` | Objects in the app's HEO altitude category. |
+| **Purple Dots** | `Purple (#8855ff)` | Objects in the app's MEO altitude category. |
 | **Orange Dots** | `Orange (#ffaa00)` | **Geostationary Orbit (GEO)** satellites (~35,786 km altitude). |
-| **Bright Lime Dots** | `Neon Green (#10ff9c)` | Satellites currently **visible to a ground station** (line-of-sight active link). |
+| **Bright Lime Dots** | `Neon Green (#10ff9c)` | Satellites currently **visible to a ground station** by the app's line-of-sight calculation. |
 | **Gold Glowing Dots** | `Gold (#ffd700)` | Satellites added to your **Favorites / Watchlist**. |
-| **Red Pulsing Dots** | `Red (#ff3b30)` | Satellites involved in a **CRITICAL or HIGH collision threat**. |
-| **Red Straight Lines** | `Red Line` | **Conjunction Threat Line** — connects two satellites passing dangerously close to each other (< threshold km). |
-| **Red Wireframe Spheres** | `Red Mesh Sphere` | **Kessler Debris Cloud** — 250 km danger zone showing simulated fragment scatter from a collision. |
-| **Yellow Curved Arcs** | `Yellow Path (#ffcc00)` | **Launch Trajectory** — expected orbital path of an upcoming rocket launch. |
-| **Purple Curved Arcs** | `Purple Path (#a855f7)` | **Maneuver Path** — predicted trajectory of a satellite performing an orbital maneuver or decay. |
-| **White Cones on Earth** | `White Cone` | **Ground Stations** (e.g. Sriharikota, Cape Canaveral, Canberra) tracking satellites. |
+| **Red Pulsing Dots** | `Red (#ff3b30)` | Satellites involved in a **CRITICAL or HIGH** risk classification. |
+| **Red Straight Lines** | `Red Line` | **Conjunction Line** — connects a pair flagged by current 3D separation below the screening threshold. |
+| **Red Wireframe Spheres** | `Red Mesh Sphere` | **Kessler Estimate** — illustrative 250 km-radius region around a hypothetical collision point. |
+| **Yellow Curved Arcs** | `Yellow Path (#ffcc00)` | **Launch Preview** — an illustrative path generated from launch-pad coordinates and a target-orbit estimate. |
+| **Purple Curved Arcs** | `Purple Path (#a855f7)` | **Maneuver Preview** — an 8-point illustrative trajectory for configured ISS/Hubble scenarios. |
+| **White Cones on Earth** | `White Cone` | **Ground Station Locations** used for visibility analysis: White Sands, Goldstone DSN, Madrid DSN, Canberra DSN, and Sriharikota. |
 | **Cyan Grid & Atmosphere** | `Cyan Net Lines` | **Atmospheric Wireframe Grid** — latitude/longitude reference net around Earth. |
 
 ---
@@ -72,7 +72,7 @@ It uses a JavaScript library called **Three.js** which talks directly to the com
 
 **What feeds the dots on the globe?**
 
-The backend downloads data from **CelesTrak**, which is NORAD's public satellite tracking database. The data format is called **TLE (Two-Line Element)** — it's a standardised two-line text format that describes a satellite's orbit at a specific point in time. Every tracked object in space has one.
+The backend fetches orbital element data from **CelesTrak**. The data format is called **TLE (Two-Line Element)** — a standardised format describing an object's orbit at a specific epoch. Not every object in the catalog is necessarily propagated in a given cycle.
 
 **Example TLE (what raw data looks like):**
 ```
@@ -81,13 +81,13 @@ ISS (ZARYA)
 2 25544  51.6400 000.0000 0001000   0.0000 000.0000 15.50000000000003
 ```
 
-To turn those numbers into a real position, the backend runs them through a physics algorithm called **SGP4** — the same formula used by NORAD and aerospace agencies worldwide. Given a TLE and a timestamp, SGP4 outputs the satellite's current latitude, longitude, and altitude.
+To estimate a position, the backend runs a TLE through **SGP4**. Given a TLE and a timestamp, the model returns an estimated state that the app converts to latitude, longitude, and altitude.
 
 **What if the internet goes down?**
 - All downloaded TLE data is saved locally to `backend/tle_cache.txt`
-- If CelesTrak is unreachable, the system automatically uses the saved file
-- The dashboard keeps running fully — it just shows a flag that data is from cache
-- **Smart rule:** it only replaces the cache if the new download has *more* satellites than what's already saved, so a bad partial download never degrades coverage
+- If CelesTrak is unreachable, the system uses any available saved TLE file
+- The app can continue propagating from an available saved TLE file; the dashboard does not display a guaranteed cache-status flag
+- **Cache rule:** it replaces the TLE cache only if the new download has *more* TLE objects than the existing cache
 
 ---
 
@@ -97,9 +97,9 @@ To turn those numbers into a real position, the backend runs them through a phys
 
 | Number shown | What it means |
 |---|---|
-| **Total Objects** | How many satellites/debris are currently rendered on the globe |
-| **Active Threats** | How many pairs of objects are dangerously close right now (within your warning threshold) |
-| **Max Speed** | The fastest orbital speed recorded among all tracked objects, in km/s |
+| **Total Objects** | How many propagated catalog objects and the synthetic test object are currently rendered on the globe |
+| **Active Threats** | How many object pairs are currently within the screening threshold |
+| **Max Speed** | The fastest orbital speed among the currently propagated objects, in km/s |
 | **Orbit LEO** | Count of objects in Low Earth Orbit — below ~2,000 km altitude |
 | **Orbit GEO** | Count of objects in Geostationary Orbit — at ~36,000 km altitude |
 
@@ -111,12 +111,12 @@ These numbers update automatically every 3 seconds.
 
 **Point to:** The "GROUND VISIBILITY" section in the left panel.
 
-**What it shows:** Which satellites are currently in a position where a ground station on Earth could contact them.
+**What it shows:** Which propagated satellites are above a ground station's minimum elevation mask in the current snapshot.
 
 **The concept — elevation masking:**
-A ground station can only talk to a satellite by radio if the satellite is *above the horizon* from the station's perspective. The minimum angle above the horizon is called the **elevation angle**. If a satellite is below 10 degrees elevation, it's too low — the signal gets blocked by the curvature of the Earth and the atmosphere.
+A ground station is counted as having visibility when a satellite is above its 10° minimum elevation mask.
 
-The system calculates this geometry for every satellite against every ground station, every update cycle.
+The system calculates this geometry for propagated objects against the five ground stations each update cycle.
 
 **Ground stations monitored:**
 | Station | Location |
@@ -135,11 +135,11 @@ Each entry in the list shows: satellite name, which station can see it, the elev
 
 **Point to:** The "LAUNCH WATCH" section showing upcoming rocket launches.
 
-**What it does:** Shows the next 5 real upcoming rocket launches worldwide with a live countdown timer.
+**What it does:** Shows up to five upcoming launch entries with a countdown when the launch time is available.
 
-**Where the data comes from:** The **Launch Library 2 API** — a free, public database maintained by The Space Devs that aggregates global launch schedules from all agencies (SpaceX, ISRO, ESA, etc.).
+**Where the data comes from:** The **Launch Library 2 API**, which the app queries for launch schedule data.
 
-It shows: rocket name, mission name, launch pad location, target orbit, and seconds until launch. Data is cached locally for 30 minutes so the dashboard doesn't continuously hit the external API.
+It shows: rocket name, mission name, launch pad location, target orbit, and seconds until launch. Successful API responses are cached for 30 minutes; a static fallback entry is used if fetching fails.
 
 ---
 
@@ -164,7 +164,7 @@ When you click a satellite, the left panel switches from the overview to a full 
 - Current orbital speed in km/s
 
 **Conjunction Threat (if applicable):**
-- If this satellite is in a close-approach situation, this section shows the other object's name, the distance between them in km, and the AI-calculated collision probability
+- If this satellite is in a close-approach situation, this section shows the other object's name, the distance between them in km, and the heuristic probability score
 
 **Advanced Risk Layers:**
 - Debris cloud count near this satellite's region
@@ -178,23 +178,23 @@ When you click a satellite, the left panel switches from the overview to a full 
 **Point to:** The horizontal row of red-bordered cards at the bottom of the page.
 
 **What is a conjunction?**
-A conjunction is when two space objects pass dangerously close to each other. The default warning distance is **500 km**. Any two objects that come within 500 km of each other appear as a warning card here.
+A conjunction is when two space objects are closer than the screening threshold in the current propagated snapshot. The default threshold is **500 km**.
 
 **What each card tells you:**
-- **Risk level badge** — LOW / MEDIUM / HIGH (colour coded: cyan = low, orange = medium, red = high)
+- **Risk level badge** — CRITICAL / HIGH / MEDIUM / LOW (red = critical, orange = high, yellow = medium, cyan = low)
 - **Object names** — which two objects are involved, e.g. `ONEWEB-0033 ↔ METOP-C`
 - **Miss distance** — exactly how far apart they currently are in km
 - **Probability badge** — the calculated collision probability as a percentage
 
 **How is the probability calculated?**
-The closer two objects are, the higher the base score. That score is then adjusted by:
-- How fast they are moving relative to each other
-- Whether the objects are active and controllable, or dead uncontrolled debris
-- The angle at which their orbits cross (head-on crossings are riskier)
-- How crowded the orbital region is (busier zones = higher base risk)
+The heuristic starts from distance, then adjusts for:
+- The pair's average orbital speed
+- Whether either object's name, operator, or country value contains "debris"
+- Whether both inclinations fall in the model's 70°–110° range
+- Orbit type (LEO or GEO)
 
-**The threshold slider:**
-On the right panel there is a slider to adjust the warning distance. Move it lower to show only the most urgent threats. Move it higher to see more warnings. The conjunction stream title updates live to show the current threshold.
+**The Conjunction Threshold slider:**
+In the left **CONTROL FILTERS** panel, the **Conjunction Threshold** slider ranges from 10 km to 2,000 km. The backend accepts and clamps values from 10 km to 5,000 km. The conjunction stream title updates to show the applied threshold.
 
 **Clicking a card:**
 Clicking any conjunction card instantly selects that satellite pair on the globe, highlights the approach line between them, and fills the telemetry panel with that satellite's full risk details.
@@ -209,17 +209,17 @@ Clicking any conjunction card instantly selects that satellite pair on the globe
 If two objects collide in orbit, the impact creates hundreds of new debris fragments. Those fragments fly outward and can hit other satellites, creating even more debris — a runaway chain reaction that could make that entire orbital band permanently dangerous or unusable. This is Kessler Syndrome.
 
 **What the simulator does:**
-It takes the top 5 most dangerous conjunction pairs (the ones with the smallest miss distances) and asks: *what if those two objects actually collided?*
+It takes up to five conjunction pairs with the smallest current separations and estimates what a hypothetical collision could look like.
 
-For each pair it calculates:
-- **Debris count** — how many fragments the collision would generate (based on miss distance; closer = more energetic impact = more debris)
-- **Cloud radius** — a 250 km sphere around the collision point where fragments would scatter
-- **Affected satellites** — which other satellites are within that danger zone and what their secondary collision probability is
-- **Chain probability sum** — the total probability of secondary collisions cascading further
+For each pair it estimates:
+- **Debris count** — a deterministic value calculated from miss distance, not a physical fragmentation model
+- **Cloud radius** — a 250 km sphere around the midpoint of the two positions
+- **Affected satellites** — other propagated objects within that radius and their illustrative distance-based chain scores
+- **Chain probability sum** — the sum of the included affected-object chain scores
 
 The results feed the numbers you see in the telemetry panel:
-- **Debris Clouds:** how many simulated collision events were modelled
-- **Chain Probability:** the overall cascading risk score
+- **Debris Clouds:** how many hypothetical conjunction events were estimated
+- **Chain Probability:** the sum of illustrative chain scores
 - **Heatmap Peak:** maximum orbital density in the affected zone
 
 ---
@@ -228,7 +228,7 @@ The results feed the numbers you see in the telemetry panel:
 
 **Point to:** The control bar with LIVE, 15M, play, pause buttons.
 
-This lets you go back in time and watch where all the satellites *were* in the past 24 hours.
+This lets you replay estimated satellite positions over the past 24 hours.
 
 | Control | What it does |
 |---|---|
@@ -240,37 +240,41 @@ This lets you go back in time and watch where all the satellites *were* in the p
 | **Slider** | Drag to any specific moment in the last 24 hours |
 
 **How does this work?**
-The SGP4 orbital physics algorithm does not just calculate where a satellite is *right now*. It can calculate where any satellite was at *any point in time* — past or future — as long as you have its TLE. Replay mode simply tells SGP4 to use a different timestamp instead of the current time.
+The timeline slider covers the previous 24 hours. The API's `at` parameter can request propagation at other parseable times; results remain estimates based on the available TLE.
 
 ---
 
 ## 🔴 Feature 10 — Real-Time Updates (WebSocket Connection)
 
-**In plain terms:** The dashboard does not refresh the page and does not keep sending "any updates?" requests to the server. Instead, the Python backend and the browser hold a **single permanent open connection** between them, and the backend pushes fresh data down that connection every 3 seconds automatically.
+**In plain terms:** The dashboard does not refresh the page. The browser connects to the Python backend using Socket.IO, and the backend pushes updates every 3 seconds while the client is connected.
 
-**Technology used:** Socket.IO — a WebSocket library.
+**Technology used:** Socket.IO, which can use a persistent WebSocket connection when supported.
 
-The backend pushes three types of data events:
+The backend pushes seven recurring data event types:
 - `objects` → updated satellite positions for the globe
 - `conjunctions` → updated close-approach warning cards
 - `stats` → updated numbers for the header bar
+- `ground_visibility` → ground-station visibility results
+- `heatmap` → orbital-density grid
+- `debris_risk` → illustrative Kessler estimates
+- `maneuvers` → configured maneuver previews
 
 **Why is this better than regular HTTP requests?**
 
-With normal HTTP, the browser would have to ask the server "any updates?" 20 times per minute. Every request has overhead — it opens a connection, sends a header, waits, gets a response, closes the connection. For 2,000 satellite positions every 3 seconds, that is enormous waste.
+The server pushes updates every 3 seconds to connected clients using Socket.IO, rather than requiring the browser to poll for each update.
 
-With WebSocket, the connection is opened once and stays open. The server pushes updates the moment they are ready, with almost no overhead. Much faster and much more efficient.
+With a persistent Socket.IO connection, the server can push updates without requiring the browser to request each update.
 
 ---
 
 ## 🗄️ Caching Summary
 
-The system has two layers of caching to ensure it always works even if external APIs fail:
+The app uses local caches for TLE data and launch responses. TLE refresh checks run every 10 minutes, and a fetch is normally attempted when the TLE cache is older than 2 hours; launch API responses are cached for 30 minutes. An available TLE file and the launch fallback are used in their respective failure cases.
 
 | Data | Cache file | How long cached |
 |---|---|---|
-| Satellite TLE orbital data | `backend/tle_cache.txt` (2.7 MB) | 2 hours — auto-refreshed |
-| Upcoming rocket launches | `backend/launch_cache.json` | 30 minutes — auto-refreshed |
+| Satellite TLE orbital data | `backend/tle_cache.txt` | Checked every 10 minutes; network fetch normally after 2 hours |
+| Upcoming rocket launches | `backend/launch_cache.json` | 30 minutes |
 
 ---
 
@@ -280,9 +284,9 @@ The system has two layers of caching to ensure it always works even if external 
 |---|---|---|
 | Backend language | **Python 3** | Readable, great scientific libraries |
 | Web framework | **Flask** | Lightweight HTTP server |
-| Real-time push | **Flask-SocketIO** | WebSocket streaming to browser |
-| Orbital physics | **SGP4 algorithm** | Industry-standard satellite position math |
-| Satellite data | **CelesTrak / NORAD** | Free, authoritative TLE source |
+| Real-time push | **Flask-SocketIO** | Socket.IO updates to connected browsers |
+| Orbital propagation | **SGP4 algorithm** | Estimates positions from TLE data |
+| Satellite data | **CelesTrak** | Public TLE catalog source |
 | Launch data | **Launch Library 2 API** | Real global launch schedule database |
 | 3D rendering | **Three.js (WebGL)** | GPU-accelerated 3D in the browser |
 | Frontend | **Vanilla JavaScript + CSS** | No framework dependency, fast load |
@@ -296,54 +300,48 @@ The system has two layers of caching to ensure it always works even if external 
 
 **Q: Why WebSockets instead of normal HTTP API calls?**
 
-HTTP polling for 2,000 satellite positions 20 times a minute creates huge overhead — each request has a full connection lifecycle. WebSocket keeps one persistent connection open; the server just pushes updates the moment they are ready. Lower latency, lower CPU cost, scales much better.
+Socket.IO lets the server push its 3-second updates to connected clients, rather than requiring a separate browser poll for each update.
 
 ---
 
 **Q: How do you show 2,000+ satellites without the browser freezing?**
 
-Three.js `InstancedMesh` — instead of creating 2,000 separate 3D objects, all satellite dots are batched into a single GPU draw call. The GPU renders all of them in one pass. This is why it stays at 60 FPS even with 2,000+ objects moving simultaneously.
+The live view can propagate up to 2,000 catalog objects per cycle. The current globe creates individual Three.js meshes, so rendering speed depends on the device and is not specified as a fixed frame rate.
 
 ---
 
 **Q: How does the collision probability get calculated?**
 
-It starts with a base probability derived from the 3D distance between the two objects (using the Haversine formula extended with altitude). That base score is then weighted by several factors: their relative orbital speeds, whether each object is an active controlled spacecraft or uncontrolled dead debris, the angle at which their orbits cross, and the density of tracked objects in that orbital region. The result is expressed as a log-scale percentage.
+The conjunction engine first calculates 3D separation using a Haversine surface distance combined with the altitude difference. The heuristic probability score then uses that distance, the average orbital speed, orbit type, debris-name/operator/country matches, and whether both inclinations are between 70° and 110°. It does not use covariance or an operational collision-probability model.
 
 ---
 
 **Q: What if CelesTrak goes offline?**
 
-The backend automatically falls back to `tle_cache.txt` — a local copy of the last successful download. The dashboard continues running fully with the cached satellite positions. An API status flag is set so the UI can display a "using cached data" notice if needed.
+The TLE fetcher can use a saved local TLE file when a network fetch is unavailable. Which objects can be propagated still depends on the available catalog data.
 
 ---
 
 **Q: What is SGP4?**
 
-SGP4 stands for Simplified General Perturbations model 4. It is the standard mathematical algorithm used by NORAD, ESA, and virtually every aerospace agency in the world to compute satellite positions from TLE data. You give it a TLE and a timestamp, it gives you back latitude, longitude, and altitude. It accounts for Earth's oblateness, atmospheric drag, solar pressure, and gravitational perturbations from the Moon and Sun.
+SGP4 stands for Simplified General Perturbations model 4. It propagates a TLE to an estimated position at a requested time. SpaceRisk Radar uses the `python-sgp4` library and converts the propagated state to latitude, longitude, altitude, and speed.
 
 ---
 
 **Q: What is a TLE?**
 
-Two-Line Element set. A standardised two-line text format maintained by NORAD that encodes the orbital parameters of a space object at a specific point in time. It contains: object ID, epoch (the reference time), drag coefficient, inclination, right ascension, eccentricity, argument of perigee, mean anomaly, and mean motion (revolutions per day). From these numbers, SGP4 can extrapolate the object's position at any time.
+Two-Line Element set. A standardized three-line text format consisting of a name line and two data lines. It encodes orbital elements for a specific epoch; SGP4 uses those elements to estimate a position at a requested time.
 
 ---
 
 ## ▶️ How to Run the Project
 
 ```bash
-# Terminal 1 — Start the backend API server
+# From the project root — start the app, which also serves the frontend
 python backend/app.py
 
-# Terminal 2 — Serve the frontend files
-cd frontend
-python -m http.server 8000
-
 # Open in browser
-http://localhost:8000
+http://localhost:5000
 ```
 
-Backend runs on port **5000** (Flask + SocketIO).  
-Frontend runs on port **8000** (static file server).  
-The browser connects to both — loads the UI from 8000, gets live data from 5000.
+Flask serves both the API and static frontend from **port 5000**; no second frontend server is required.

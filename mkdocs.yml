@@ -1,8 +1,6 @@
 site_name: SpaceRisk Radar
 site_url: https://bhagyaabbigeri.github.io/SpaceRisk-Radar/
-site_description: >-
-  Technical documentation for SpaceRisk Radar — a real-time orbital
-  collision-risk and space-debris monitoring platform.
+site_description: Documentation for SpaceRisk Radar, an orbital collision-risk screening and visualization platform.
 site_author: Bhagyashree Reddy
 repo_url: https://github.com/Bhagyaabbigeri/SpaceRisk-Radar
 repo_name: SpaceRisk-Radar
