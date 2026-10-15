@@ -63,8 +63,8 @@ With over **10,000+ active satellites** and **36,000+ tracked debris objects** o
 
 **SpaceRisk Radar** addresses these challenges by providing:
 
-- **Real-time conjunction screening** for collision-risk awareness
-- **Illustrative Kessler risk estimates** for cascading debris scenarios
+- **Real-time conjunction screening** for collision avoidance decision-making
+- **Kessler syndrome simulation** to assess cascading debris risks
 - **Accessible visualization** that makes orbital mechanics data understandable
 - **Open-source tooling** for researchers, educators, and space enthusiasts
 
