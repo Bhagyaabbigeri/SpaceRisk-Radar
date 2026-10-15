@@ -535,7 +535,7 @@ The cascading collision model is inspired by:
 |---|---|
 | **Catalog Size** | Up to 2,000 TLE catalog objects per live cycle |
 | **Update Frequency** | 3-second Socket.IO push cycle |
-| **TLE Refresh** | Every 10 minutes (2-hour file cache) |
+| **TLE Refresh Check** | Every 10 minutes (2-hour file cache) |
 | **API Response Time** | < 500ms for cached endpoints |
 | **Cache TTL** | 10 seconds–30 minutes (endpoint-dependent) |
 | **WebSocket Protocol** | Socket.IO with Eventlet async mode |
