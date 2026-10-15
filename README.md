@@ -1,9 +1,9 @@
-p align="center">
+<p align="center">
   <img src="frontend/SpaceRisk_Radar_live_Dashboard.png" alt="SpaceRisk Radar Dashboard" width="900"/>
 </p>
 
 <h1 align="center">🛰️ SpaceRisk Radar</h1>
-<h3 align="center">AI-Powered Orbital Collision Prediction & Space Debris Monitoring Platform</h3>
+<h3 align="center">Orbital Collision-Risk Screening & Visualization Platform</h3>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
@@ -62,11 +62,11 @@ The system features a cinematic **3D globe visualization** built with Three.js t
 
 ## 🎯 Problem Statement
 
-With over **10,000+ active satellites** and **36,000+ tracked debris objects** orbiting Earth, the risk of orbital collisions has never been higher. The 2009 Iridium-Cosmos collision and the 2021 Russian ASAT test demonstrated how a single event can generate thousands of debris fragments, threatening the long-term sustainability of space operations.
+With thousands of active satellites and thousands of tracked debris objects orbiting Earth, the risk of orbital collisions has never been higher. The 2009 Iridium-Cosmos collision and the 2021 Russian ASAT test demonstrated how a single event can generate thousands of debris fragments, threatening the long-term sustainability of space operations.
 
 **SpaceRisk Radar** addresses these challenges by providing:
 
-- **Real-time conjunction screening** for collision avoidance decision-making
+- **Real-time conjunction screening** for awareness and education
 - **Kessler syndrome simulation** to assess cascading debris risks
 - **Accessible visualization** that makes orbital mechanics data understandable
 - **Open-source tooling** for researchers, educators, and space enthusiasts
@@ -86,10 +86,10 @@ With over **10,000+ active satellites** and **36,000+ tracked debris objects** o
 | 🚀 **Launch Tracking** | Upcoming launch schedule from Launch Library 2 API with countdown timers |
 | 🔄 **Real-Time Updates** | Socket.IO WebSocket push every 3 seconds for live telemetry |
 | 🔍 **Satellite Search** | Fuzzy search across the full TLE catalog with auto-complete results |
-| ⭐ **Favorites & Watchlist** | Bookmark satellites for quick access with persistent local storage |
+| ⭐ **Favorites & Watchlist** | Favorites are stored in browser storage; watched satellites sync to the user's account when signed in |
 | 🔐 **User Authentication** | JWT-based auth with SQLite user profiles, preferences, and alert settings |
-| 📊 **Maneuver Predictions** | Drag-based orbit decay and station-keeping maneuver forecasting |
-| ⏱️ **Historical Playback** | Time-slider to propagate orbits at any past/future epoch |
+| 📊 **Maneuver Predictions** | ISS/Hubble maneuver scenario inputs with lightweight 8-point trajectory previews |
+| ⏱️ **Historical Playback** | Time-slider covers the past 24 hours; the API `at` parameter accepts any valid ISO-8601 time |
 | 📱 **Responsive Design** | Glassmorphism HUD interface optimized for desktop and tablet |
 
 ---
@@ -118,12 +118,12 @@ With over **10,000+ active satellites** and **36,000+ tracked debris objects** o
 │  │  Visibility   │  │   Simulator     │  │  (Density Grid)  │ │
 │  └───────────────┘  └─────────────────┘  └──────────────────┘ │
 │  ┌───────────────┐  ┌─────────────────┐  ┌──────────────────┐ │
-│  │ Launch Tracker│  │Maneuver Predict │  │  Auth Service    │ │
-│  │ (LL2 API)     │  │ (Drag Decay)    │  │  (JWT + SQLite)  │ │
+│  │ Launch Tracker│  │Maneuver Inputs  │  │  Auth Service    │ │
+│  │ (LL2 API)     │  │  (ISS/Hubble)   │  │  (JWT + SQLite)  │ │
 │  └───────────────┘  └─────────────────┘  └──────────────────┘ │
 │  ┌───────────────┐  ┌─────────────────┐  ┌──────────────────┐ │
 │  │  Alert System │  │  Cache Layer    │  │  API v1 Router   │ │
-│  │  (Dispatcher) │  │  (In-Memory)    │  │  (Blueprint)     │ │
+│  │  (Dispatcher) │  │ (Redis / Memory)│  │  (Blueprint)     │ │
 │  └───────────────┘  └─────────────────┘  └──────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -141,6 +141,7 @@ With over **10,000+ active satellites** and **36,000+ tracked debris objects** o
 | **SGP4** | Satellite orbit propagation (NORAD TLE standard) |
 | **Flask-CORS** | Cross-origin resource sharing for frontend integration |
 | **PyJWT** | JSON Web Token authentication |
+| **Redis (optional)** | Optional cache backend with in-memory fallback |
 | **SQLite** | Lightweight embedded database for user data |
 | **Werkzeug** | Password hashing and WSGI utilities |
 
@@ -174,11 +175,11 @@ SpaceRisk-Radar/
 │   ├── heatmap.py              # Orbital congestion heatmap computation
 │   ├── kessler.py              # Kessler syndrome cascade simulation
 │   ├── launches.py             # Upcoming launch data from Launch Library 2
-│   ├── maneuvers.py            # Maneuver prediction & orbit decay modeling
+│   ├── maneuvers.py            # ISS/Hubble maneuver scenario inputs & trajectory previews
 │   ├── alerts.py               # Alert dispatcher & scheduling system
 │   ├── auth_service.py         # JWT authentication & user management
 │   ├── api_v1.py               # Versioned API v1 blueprint router
-│   ├── cache_layer.py          # In-memory caching layer with TTL
+│   ├── cache_layer.py          # Redis-backed cache with in-memory fallback and TTL
 │   └── openapi_spec.py         # OpenAPI 3.0 specification generator
 │
 ├── frontend/
@@ -246,7 +247,7 @@ The Three.js library is loaded from a CDN in `index.html`. Socket.IO and Ionicon
 
 ## ▶️ Running the Application
 
-### Step 1: Start the Backend Server
+### Step 1: Start the Application
 
 ```bash
 # From the project root directory
@@ -258,17 +259,11 @@ The backend API server starts on **`http://localhost:5000`** with:
 - Socket.IO WebSocket server for real-time push updates
 - Background threads for TLE refresh (every 10 minutes) and live object emission (every 3 seconds)
 
-### Step 2: Start the Frontend Server
+The frontend is a static HTML/CSS/JS application with no build step required, and Flask serves it from the same application process; no separate frontend server is needed.
 
-```bash
-# From the frontend directory
-cd frontend
-python -m http.server 8000
-```
+### Step 2: Open the Dashboard
 
-### Step 3: Open the Dashboard
-
-Navigate to **`http://localhost:8000`** in your browser.
+Navigate to **`http://localhost:5000`** in your browser.
 
 > **Note:** The backend must be running on port 5000 for live data. The frontend automatically connects to `http://localhost:5000` for API calls and WebSocket streams.
 
@@ -522,7 +517,7 @@ The Simplified General Perturbations (SGP4) model, developed by the NORAD/USSPAC
 **Reference:** Vallado, D.A., Crawford, P., Hujsak, R., Kelso, T.S. (2006). *Revisiting Spacetrack Report #3*. AIAA/AAS Astrodynamics Specialist Conference.
 
 ### Conjunction Assessment
-The proximity screening methodology follows operational practices from:
+The proximity screening methodology is inspired by:
 - **NASA Conjunction Assessment (CA)** program
 - **ESA Space Debris Office** collision avoidance protocols
 - **JSpOC (now CSpOC)** screening volume definitions
