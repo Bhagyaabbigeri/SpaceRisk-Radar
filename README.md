@@ -426,9 +426,9 @@ The launch tracker (`launches.py`) provides visibility into the near-term launch
 
 <p align="center">
   <img src="frontend/screenshot.png" alt="SpaceRisk Radar - 3D Globe Dashboard" width="900"/>
+  <br/>
+  <b>Interactive Gallery</b>
 </p>
-
-### 🛰️ Interactive Gallery
 
 <p align="center">
   <img src="screenshots/SpaceRisk-Rader1.png" alt="Global Orbital Network" width="900"/>
