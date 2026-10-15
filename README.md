@@ -21,6 +21,10 @@
   <strong>GitHub:</strong> <a href="https://github.com/Bhagyaabbigeri/SpaceRisk-Radar">https://github.com/Bhagyaabbigeri/SpaceRisk-Radar</a>
 </p>
 
+SpaceRisk Radar runs locally. Follow the [Getting Started](docs/getting-started.md) guide to run it on your own machine.
+
+---
+
 ## 📋 Table of Contents
 
 - [Project Overview](#-project-overview)
